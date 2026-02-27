@@ -35,3 +35,16 @@ uv sync
 
 - アクセス制御: Uniform（均一性）
   - Hierarchical Namespace との互換性を保ちつつ、IAM（Identity and Access Management）による一元的な権限管理を行い、最小権限の原則（Least Privilege）を適用しています。
+
+
+
+## 開発プロセス
+
+実務的なチーム開発を想定し、以下のワークフローを採用しています。
+
+### ブランチ戦略 (GitHub Flow)
+本プロジェクトでは GitHub Flow を採用しています。
+1. `main` ブランチから`feat/`, `fix/` などの接頭辞を用いた機能単位のブランチを作成
+2. 実装完了後、GitHub 上でプルリクエストを作成
+3. セルフレビューを経て `main` ブランチへマージ
+4. `main` ブランチは常にデプロイ可能な状態を維持
