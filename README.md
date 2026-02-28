@@ -82,6 +82,7 @@ gcloud init
 gcloud auth application-default login
 ```
 
+
 ### 4. 接続確認
 
 正しく設定されたか確認します。
@@ -89,6 +90,23 @@ gcloud auth application-default login
 ```bash
 gcloud --version
 ```
+
+
+### 5. 環境変数の設定
+
+プロジェクトを実行するために、環境変数の設定が必要です。テンプレートをコピーして `.env` ファイルを作成してください。
+
+```bash
+# テンプレートをコピー
+cp .env.example .env
+```
+
+作成した `.env` をエディタで開き、以下の項目を各自の環境に合わせて編集してください。
+
+| 変数名 | 説明 | 設定例 |
+| --- | --- | --- |
+| `GOOGLE_CLOUD_PROJECT` | 使用するプロジェクトID | `your-project-id-123` |
+| `GOOGLE_CLOUD_LOCATION` | Vertex AIのリソース場所 | `asia-northeast1` |
 
 ---
 
