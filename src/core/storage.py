@@ -1,8 +1,10 @@
 import os
-from google.cloud import storage
+
 from dotenv import load_dotenv
+from google.cloud import storage
 
 load_dotenv()
+
 
 class CloudStorageManager:
     def __init__(self):
@@ -14,14 +16,15 @@ class CloudStorageManager:
         """ファイルをGCSにアップロードし、gs://から始まるURIを返す"""
         # ファイル名だけを抽出 (upload/test.png -> test.png)
         file_name = os.path.basename(source_file_path)
-        
+
         bucket = self.client.bucket(self.bucket_name)
         blob = bucket.blob(file_name)
-        
+
         print(f"Uploading {source_file_path} to gs://{self.bucket_name}/{file_name}...")
         blob.upload_from_filename(source_file_path)
-        
+
         return f"gs://{self.bucket_name}/{file_name}"
+
 
 if __name__ == "__main__":
     # 動作確認用
