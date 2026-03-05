@@ -15,3 +15,35 @@ dependencies = [
 dev = [
     "ruff>=0.15.4",
 ]
+
+[tool.ruff]
+# 1行の最大文字数
+line-length = 88
+
+# チェック対象とするPythonのバージョン
+target-version = "py312"
+
+[tool.ruff.lint]
+# 有効にするルールのカテゴリを指定
+select = [
+    "E",  # pycodestyle エラー (基本ルール)
+    "F",  # Pyflakes (未使用インポートなど)
+    "I",  # isort (インポート順の整理)
+    "B",  # flake8-bugbear (バグになりやすい書き方の検知)
+    "UP", # pyupgrade (古いPython構文を新しいものに自動変換)
+    "N",  # pep8-naming (命名規則)
+]
+
+# あえて無視するルール（必要に応じて追加）
+ignore = []
+
+[tool.ruff.lint.isort]
+# インポート順を整理する際の詳細設定
+# たとえば特定のライブラリを常に一番上にしたい場合などに使います
+known-first-party = ["your_project_name"]
+
+[tool.ruff.format]
+# フォーマット設定
+quote-style = "double"        # ダブルクォートに統一
+indent-style = "space"        # スペースでインデント
+skip-magic-trailing-comma = false
