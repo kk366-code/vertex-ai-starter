@@ -14,6 +14,106 @@
 - 支払い情報の紐付け
 
 ### 2. 環境構築
+
+
+## 🛠 Google Cloud CLI (gcloud) の導入
+
+プロジェクトを操作するために Google Cloud CLI のインストールが必要です。OSごとの手順に従ってください。
+
+### 1. インストール
+
+#### 🍎 macOS
+
+Homebrewを使用するか、インタラクティブなスクリプトでインストールします。
+
+```bash
+# Homebrewを使用する場合
+brew install --cask google-cloud-sdk
+
+# または インストールスクリプトを使用する場合
+curl https://sdk.cloud.google.com | bash
+```
+
+#### 🐧 Linux
+
+多くのディストリビューションで以下のスクリプトが動作します。
+
+```bash
+curl https://sdk.cloud.google.com | bash
+```
+
+#### 🪟 Windows
+
+1. [Google Cloud CLI インストーラ](https://www.google.com/search?q=https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe) をダウンロードして実行します。
+2. インストール完了後、**Google Cloud SDK Shell** を管理者権限で起動します。
+
+---
+
+### 2. Python 環境の紐付け (重要)
+
+`gcloud` は Python 3.10 以上を必要とします。本プロジェクトでは `uv` で管理している Python を使用することを推奨します。
+
+```bash
+# uv で Python 3.12 をインストール
+uv python install 3.12
+
+# gcloud が使用する Python を指定 (macOS/Linux)
+export CLOUDSDK_PYTHON=$(uv python find 3.12)
+
+# Windows (PowerShell) の場合
+$env:CLOUDSDK_PYTHON = (uv python find 3.12)
+```
+
+> [!TIP]
+> ターミナルを再起動しても有効にするために、macOS/Linux の場合は `~/.zshrc` や `~/.bashrc` に上記 `export` 文を追記してください。
+
+---
+
+### 3. 初期設定と認証
+
+インストールが完了したら、以下のコマンドで Google アカウントとの連携を行います。
+
+```bash
+# 1. 基本設定（ブラウザが開くのでログインしてプロジェクトを選択）
+gcloud init
+
+# 2. アプリケーション実行用認証 (ADC) の設定
+# これにより Python SDK (google-genai) が自動的に認証情報を参照できるようになります
+gcloud auth application-default login
+```
+
+
+### 4. 接続確認
+
+正しく設定されたか確認します。
+
+```bash
+gcloud --version
+```
+
+
+### 5. 環境変数の設定
+
+プロジェクトを実行するために、環境変数の設定が必要です。テンプレートをコピーして `.env` ファイルを作成してください。
+
+```bash
+# テンプレートをコピー
+cp .env.example .env
+```
+
+作成した `.env` をエディタで開き、以下の項目を各自の環境に合わせて編集してください。
+
+| 変数名 | 説明 | 設定例 |
+| --- | --- | --- |
+| `GOOGLE_CLOUD_PROJECT` | 使用するプロジェクトID | `your-project-id-123` |
+| `GOOGLE_CLOUD_LOCATION` | Vertex AIのリソース場所 | `asia-northeast1` |
+
+---
+
+### 💡 次のステップ
+
+認証が完了したら、プロジェクトの依存関係を同期してください。
+
 ```bash
 # リポジトリのクローン（またはダウンロード）
 # uvによるパッケージインストール
