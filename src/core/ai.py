@@ -17,16 +17,17 @@ class GeminiManager:
         )
         self.model_id = "gemini-2.5-flash"
 
-    def analyze_gcs_media(self, gcs_uri, prompt):
+
+    def analyze_media(self, gcs_uri, prompt, mime_type="image/png"):
         """
-        GCS上のメディアを解析する（google-genai 版）
+        GCS上のメディアを解析する
         """
         # GCSの情報をPartとして作成
         media_part = types.Part.from_uri(
-            file_uri=gcs_uri,
-            mime_type="image/png"
-        )
-
+            file_uri=gcs_uri, 
+            mime_type=mime_type
+            )
+        
         response = self.client.models.generate_content(
             model=self.model_id,
             contents=[prompt, media_part],
@@ -45,7 +46,7 @@ if __name__ == "__main__":
     test_prompt = "この画像の内容を「日本語」で詳細に説明してください。キーは 'description' と 'objects' にしたJSON形式で返してください。"
     
     try:
-        result = ai.analyze_gcs_media(test_uri, test_prompt)
+        result = ai.analyze_media(test_uri, test_prompt)
         print(f"AI Response:\n{result}")
     except Exception as e:
         print(f"エラーが発生しました:\n{e}")
