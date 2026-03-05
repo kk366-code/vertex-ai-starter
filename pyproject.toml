@@ -13,12 +13,14 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "mypy>=1.19.1",
     "ruff>=0.15.4",
 ]
 
 [tool.ruff]
 # 1行の最大文字数
-line-length = 88
+# デフォルトの88だとインデントがスペース4個分なので折り返されてしまう
+line-length = 100
 
 # チェック対象とするPythonのバージョン
 target-version = "py312"
@@ -47,3 +49,22 @@ known-first-party = ["your_project_name"]
 quote-style = "double"        # ダブルクォートに統一
 indent-style = "space"        # スペースでインデント
 skip-magic-trailing-comma = false
+
+[tool.mypy]
+# 型ヒントがない関数もチェック対象にする（少し厳しめ）
+check_untyped_defs = true
+
+# インポート先のライブラリに型定義がなくてもエラーにしない（SDK利用時に重要）
+ignore_missing_imports = true
+
+# 戻り値に Any 型が含まれる場合に警告（任意。厳しくしたい場合は true）
+warn_no_return = true
+
+# 実行時のベースとなるPythonバージョン
+python_version = "3.12"
+
+# 無視するディレクトリ（仮想環境などは除外）
+exclude = [
+    ".venv",
+    "tests",
+]
