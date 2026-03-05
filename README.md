@@ -136,6 +136,29 @@ uv sync
   - Hierarchical Namespace との互換性を保ちつつ、IAM（Identity and Access Management）による一元的な権限管理を行い、最小権限の原則（Least Privilege）を適用しています。
 
 
+## 🛠 開発環境の設定 (VSCode)
+
+本プロジェクトでは `Ruff` を使用したコードの自動整形を推奨しています。以下の設定を行うことで、保存時に自動でインポート順の整理とコードフォーマットが行われます。
+
+1. **拡張機能のインストール**:
+   - [Ruff](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) 拡張機能をインストールします。
+
+2. **VSCode 設定の適用**:
+   プロジェクト直下の `.vscode/settings.json` に以下の設定を追加してください（リポジトリに含まれている場合は不要です）。
+
+  ```json
+   {
+     "[python]": {
+       "editor.defaultFormatter": "charliermarsh.ruff",
+       "editor.formatOnSave": true,
+       "editor.codeActionsOnSave": {
+         "source.organizeImports.ruff": "explicit",
+         "source.fixAll.ruff": "explicit"
+       }
+     }
+   }
+  ```
+
 
 ## 開発プロセス
 
