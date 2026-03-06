@@ -22,7 +22,21 @@ class GeminiCore:
         mime_type: str = "image/png",
     ) -> str:
         """GCSメディアを含めたJSON推論を実行"""
-        contents: list[str | types.Part] = [prompt]
+
+        # 画像がある場合のみ、画像解析の指示を先頭に付け加える
+        if gcs_uri is not None:
+            full_prompt = (
+                f"【画像解析モード】添付された画像を確認し、以下の指示に従ってください：\n{prompt}"
+            )
+        else:
+            # ハルシネーション対策
+            # AIにとって「できません」と言うのは勇気がいる（スコアが低くなる可能性がある）行為です。
+            # 「できないと言っていい」という指示は、専門用語で "Negative Constraint"（否定的制約） と呼ばれます。
+            # これを明示することで、AIの中にある「間違った推論を生成しようとする確率」を強制的に下げ、
+            # より論理的な判断（画像がない ＝ 解析不能）を優先させます。
+            full_prompt = f"【テキスト解析モード】画像は添付されていません。できないことはできないと回答してください。：\n{prompt}"
+
+        contents: list[str | types.Part] = [full_prompt]
 
         # --- メディアがない場合は、テキストのみで処理 ---
         if gcs_uri is None:
