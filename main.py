@@ -1,36 +1,54 @@
-from src.core.ai import GeminiManager
-from src.core.storage import CloudStorageManager
+import os
 
+from dotenv import load_dotenv
 
-def run_pipeline(file_path, prompt):
-    """
-    一連の処理（アップロード → 解析）を行うコア・ロジック
-    """
-    storage = CloudStorageManager()
-    ai = GeminiManager()
+from src.core.ai import GeminiCore
 
-    # 1. アップロード
-    gcs_uri = storage.upload_file(file_path)
-    # 2. 解析
-    result = ai.analyze_media(gcs_uri, prompt)
-    return result
+# from src.core.storage import CloudStorageManager # 今回は一旦パス指定でテスト
+
+load_dotenv()
+PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
+if PROJECT_ID is None:
+    raise ValueError("環境変数 'GOOGLE_CLOUD_PROJECT' が指定されていません")
+
+LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")  # デフォルト値を設定可能
 
 
 def main():
-    """
-    開発中の動作確認や、CLIとして使うための実行用関数
-    """
-    print("🚀 AI Pipeline Start")
+    # 1. 環境変数の準備
+    project_id = PROJECT_ID
+    if project_id is None:
+        raise ValueError("環境変数 'GOOGLE_CLOUD_PROJECT' が指定されていません")
 
-    # 動作確認用のサンプル
-    target = "upload/test.png"
-    prompt = "画像の内容を日本語で説明してください。"
+    location = "us-central1"  # または "asia-northeast1"
 
+    print(f"🚀 AI基盤 起動テスト (Project: {project_id})")
+
+    # 2. クラスのインスタンス化
     try:
-        response = run_pipeline(target, prompt)
-        print(f"✅ Result: {response}")
+        core = GeminiCore(project_id=project_id, location=location)
+
+        # 3. テスト用のプロンプト（JSON形式で返してもらうよう指示）
+        prompt = """
+        画像の内容を以下のJSON形式で解析してください。
+        {
+            "summary": "全体の説明",
+            "objects": ["検知した物体のリスト"],
+            "is_danger": true/false
+        }
+        """
+
+        # 今回は一旦、GCSなし（テキストのみ）の画像なしルートをテスト
+        print("🤖 Geminiに問い合わせ中...")
+        result_json = core.generate_json(prompt=prompt)
+
+        print("\n✨ --- 解析結果 ---")
+        print(result_json)
+        print("------------------\n")
+        print("✅ 動作確認完了！")
+
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ エラーが発生しました: {e}")
 
 
 if __name__ == "__main__":
