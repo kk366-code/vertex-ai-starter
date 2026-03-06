@@ -3,6 +3,8 @@ import os
 from dotenv import load_dotenv
 from google import genai
 
+from .schema import AnalysisResult
+
 load_dotenv()
 
 
@@ -72,6 +74,31 @@ class GeminiCore:
             raise ValueError("Geminiからのレスポンス(text)がNoneでした。")
 
         return response.text
+
+    def generate_structured_data(
+        self, prompt: str, gcs_uri: str | None = None, mime_type: str = "image/png"
+    ) -> AnalysisResult:
+        """Pydanticモデルに基づいて構造化データを生成"""
+        contents: list[str | genai.types.Part] = [prompt]
+        if gcs_uri:
+            contents.append(genai.types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type))
+
+        # Pydanticモデルをresponse_schemaに指定
+        config = genai.types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=AnalysisResult,
+            temperature=0.1,
+        )
+
+        response = self.client.models.generate_content(
+            model=self.model_id, contents=contents, config=config
+        )
+
+        if response.text is None:
+            raise ValueError("Geminiからのレスポンス(text)がNoneでした。")
+
+        # 文字列ではなく、Pydanticモデルのインスタンスとしてパースして返す
+        return AnalysisResult.model_validate_json(response.text)
 
 
 class GeminiManager:
