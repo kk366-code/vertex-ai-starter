@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 
 from src.core.ai import GeminiCore
+from src.core.schema import AnalysisResult
 
 # from src.core.storage import CloudStorageManager # 今回は一旦パス指定でテスト
 
@@ -36,7 +37,7 @@ def main():
 
         # 4. generate_structured_data を呼び出す
         # 戻り値は AnalysisResult 型のインスタンスです
-        result = core.generate_structured_data(prompt=prompt)
+        result = core.generate_structured_data(prompt=prompt, response_schema=AnalysisResult)
 
         print("\n✨ --- 解析結果 (Pydantic Object) ---")
         # 辞書形式で表示したい場合は .model_dump() を使います

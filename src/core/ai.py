@@ -1,11 +1,15 @@
 import os
+from typing import TypeVar
 
 from dotenv import load_dotenv
 from google import genai
+from pydantic import BaseModel
 
 from .schema import AnalysisResult
 
 load_dotenv()
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class GeminiCore:
@@ -76,8 +80,12 @@ class GeminiCore:
         return response.text
 
     def generate_structured_data(
-        self, prompt: str, gcs_uri: str | None = None, mime_type: str = "image/png"
-    ) -> AnalysisResult:
+        self,
+        prompt: str,
+        gcs_uri: str | None = None,
+        mime_type: str = "image/png",
+        response_schema: type[T] = AnalysisResult,  # スキーマを外から渡せるようにする
+    ) -> T:
         """Pydanticモデルに基づいて構造化データを生成"""
         contents: list[str | genai.types.Part] = [prompt]
         if gcs_uri:
@@ -98,7 +106,7 @@ class GeminiCore:
             raise ValueError("Geminiからのレスポンス(text)がNoneでした。")
 
         # 文字列ではなく、Pydanticモデルのインスタンスとしてパースして返す
-        return AnalysisResult.model_validate_json(response.text)
+        return response_schema.model_validate_json(response.text)
 
 
 class GeminiManager:
