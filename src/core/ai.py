@@ -1,9 +1,15 @@
 import os
+from typing import TypeVar
 
 from dotenv import load_dotenv
-from google.genai import Client, types
+from google import genai
+from pydantic import BaseModel
+
+from .schema import AnalysisResult
 
 load_dotenv()
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class GeminiCore:
@@ -12,7 +18,7 @@ class GeminiCore:
         if not project_id:
             raise ValueError("GOOGLE_CLOUD_PROJECT が設定されていません。")
 
-        self.client = Client(vertexai=True, project=project_id, location=location)
+        self.client = genai.Client(vertexai=True, project=project_id, location=location)
         self.model_id = "gemini-2.5-flash"
 
     def generate_json(
@@ -36,14 +42,14 @@ class GeminiCore:
             # より論理的な判断（画像がない ＝ 解析不能）を優先させます。
             full_prompt = f"【テキスト解析モード】画像は添付されていません。できないことはできないと回答してください。：\n{prompt}"
 
-        contents: list[str | types.Part] = [full_prompt]
+        contents: list[str | genai.types.Part] = [full_prompt]
 
         # --- メディアがない場合は、テキストのみで処理 ---
         if gcs_uri is None:
             response = self.client.models.generate_content(
                 model=self.model_id,
                 contents=contents,
-                config=types.GenerateContentConfig(response_mime_type="application/json"),
+                config=genai.types.GenerateContentConfig(response_mime_type="application/json"),
             )
 
             # response.textはNoneを返す可能性があるため、ここでNoneチェック
@@ -53,10 +59,10 @@ class GeminiCore:
             return response.text
 
         # --- メディアがある場合の処理 ---
-        media_part = types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type)
+        media_part = genai.types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type)
         contents.append(media_part)
 
-        config = types.GenerateContentConfig(
+        config = genai.types.GenerateContentConfig(
             response_mime_type="application/json",
             temperature=0.2,  # 汎用基盤として再現性を高めるため低めに設定
         )
@@ -73,6 +79,35 @@ class GeminiCore:
 
         return response.text
 
+    def generate_structured_data(
+        self,
+        prompt: str,
+        gcs_uri: str | None = None,
+        mime_type: str = "image/png",
+        response_schema: type[T] = AnalysisResult,  # スキーマを外から渡せるようにする
+    ) -> T:
+        """Pydanticモデルに基づいて構造化データを生成"""
+        contents: list[str | genai.types.Part] = [prompt]
+        if gcs_uri:
+            contents.append(genai.types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type))
+
+        # Pydanticモデルをresponse_schemaに指定
+        config = genai.types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=AnalysisResult,
+            temperature=0.1,
+        )
+
+        response = self.client.models.generate_content(
+            model=self.model_id, contents=contents, config=config
+        )
+
+        if response.text is None:
+            raise ValueError("Geminiからのレスポンス(text)がNoneでした。")
+
+        # 文字列ではなく、Pydanticモデルのインスタンスとしてパースして返す
+        return response_schema.model_validate_json(response.text)
+
 
 class GeminiManager:
     def __init__(self):
@@ -80,7 +115,7 @@ class GeminiManager:
         self.location = os.getenv("GOOGLE_CLOUD_LOCATION", "asia-northeast1")
 
         # vertexai=True を指定することで Vertex AI バックエンドを使用
-        self.client = Client(
+        self.client = genai.Client(
             vertexai=True,
             project=self.project_id,
             location=self.location,
@@ -92,12 +127,12 @@ class GeminiManager:
         GCS上のメディアを解析する
         """
         # GCSの情報をPartとして作成
-        media_part = types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type)
+        media_part = genai.types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type)
 
         response = self.client.models.generate_content(
             model=self.model_id,
             contents=[prompt, media_part],
-            config=types.GenerateContentConfig(response_mime_type="application/json"),
+            config=genai.types.GenerateContentConfig(response_mime_type="application/json"),
         )
 
         return response.text
@@ -106,7 +141,7 @@ class GeminiManager:
 if __name__ == "__main__":
     ai = GeminiManager()
     bucket = os.getenv("GCS_BUCKET_NAME")
-    test_uri = f"gs://{bucket}/test.png"
+    test_uri = f"gs://{bucket}/test.jpg"
 
     test_prompt = "この画像の内容を「日本語」で詳細に説明してください。キーは 'description' と 'objects' にしたJSON形式で返してください。"
 

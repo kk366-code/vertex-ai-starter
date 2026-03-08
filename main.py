@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 
 from src.core.ai import GeminiCore
+from src.core.schema import AnalysisResult
 
 # from src.core.storage import CloudStorageManager # 今回は一旦パス指定でテスト
 
@@ -20,32 +21,35 @@ def main():
     if project_id is None:
         raise ValueError("環境変数 'GOOGLE_CLOUD_PROJECT' が指定されていません")
 
-    location = "us-central1"  # または "asia-northeast1"
+    location = LOCATION
 
     print(f"🚀 AI基盤 起動テスト (Project: {project_id})")
 
-    # 2. クラスのインスタンス化
     try:
+        # 2. クラスのインスタンス化
         core = GeminiCore(project_id=project_id, location=location)
 
-        # 3. テスト用のプロンプト（JSON形式で返してもらうよう指示）
-        prompt = """
-        画像の内容を以下のJSON形式で解析してください。
-        {
-            "summary": "全体の説明",
-            "objects": ["検知した物体のリスト"],
-            "is_danger": true/false
-        }
-        """
+        # 3. プロンプト（Pydanticを使う場合、JSONの書き方の指示は不要）
+        # Geminiはresponse_schemaを見て自動的に構造を理解する
+        prompt = "画像（または指示内容）の全体的な要約、検知した物体、および危険性の有無を判定してください。"
 
-        # 今回は一旦、GCSなし（テキストのみ）の画像なしルートをテスト
         print("🤖 Geminiに問い合わせ中...")
-        result_json = core.generate_json(prompt=prompt)
 
-        print("\n✨ --- 解析結果 ---")
-        print(result_json)
+        # 4. generate_structured_data を呼び出す
+        # 戻り値は AnalysisResult 型のインスタンスです
+        result = core.generate_structured_data(prompt=prompt, response_schema=AnalysisResult)
+
+        print("\n✨ --- 解析結果 (Pydantic Object) ---")
+        # 辞書形式で表示したい場合は .model_dump() を使います
+        print(f"説明: {result.description}")
+        print(f"物体リスト: {result.objects}")
+        print(f"解析の信頼度スコア: {result.confidence_score}")
+
+        print("\n📦 生のデータ構造:")
+        print(result.model_dump())
         print("------------------\n")
-        print("✅ 動作確認完了！")
+
+        print("✅ 構造化データの取得に成功しました！")
 
     except Exception as e:
         print(f"❌ エラーが発生しました: {e}")
