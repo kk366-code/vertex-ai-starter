@@ -14,6 +14,8 @@ dependencies = [
 [dependency-groups]
 dev = [
     "mypy>=1.19.1",
+    "pytest>=9.0.2",
+    "pytest-mock>=3.15.1",
     "ruff>=0.15.4",
 ]
 
@@ -72,3 +74,7 @@ exclude = [
 # srcレイアウト配下のモジュール重複読み込みエラーを防止
 # 例えば、src/core/ai.py が "ai" と "src.core.ai" の両方で認識されるエラーを防ぐ
 explicit_package_bases = true
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
