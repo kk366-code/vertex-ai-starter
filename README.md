@@ -202,6 +202,7 @@ uv sync
 <summary>Git Bash (.bashrc) 用の設定</summary>
 
 1. 設定ファイルの作成
+
 ```bash
 # ホームディレクトリへ移動
 cd ~
@@ -240,11 +241,11 @@ function gdc() {
 ```
 
 3. 設定の有効化
+
 ```bash
 # 有効化する
 source ~/.bashrc
 ```
-
 
 </details>
 
@@ -280,6 +281,7 @@ function gdc {
 
 <details>
 <summary>macOS (zsh / bash) 用の設定</summary>
+
 macOSでは `pbcopy` コマンドを使用してクリップボードに送ります。
 
 1. 設定ファイルを開く
@@ -321,7 +323,6 @@ function gdc() {
 source ~/.zshrc  # zsh の場合
 # または source ~/.bashrc
 ```
-
 
 </details>
 
