@@ -83,9 +83,9 @@ class GeminiCore:
     def generate_structured_data(
         self,
         prompt: str,
+        response_schema: type[T],  # スキーマを外から渡せるようにする
         gcs_uri: str | None = None,
         mime_type: str = "image/png",
-        response_schema: type[T] = AnalysisResult,  # スキーマを外から渡せるようにする
     ) -> T:
         """Pydanticモデルに基づいて構造化データを生成"""
 
