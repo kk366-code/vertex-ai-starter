@@ -20,7 +20,7 @@ dev = [
 [tool.ruff]
 # 1行の最大文字数
 # デフォルトの88だとインデントがスペース4個分なので折り返されてしまう
-line-length = 120
+line-length = 150
 
 # チェック対象とするPythonのバージョン
 target-version = "py312"
