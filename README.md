@@ -171,6 +171,123 @@ uv sync
 3. セルフレビューを経て `main` ブランチへマージ
 4. `main` ブランチは常にデプロイ可能な状態を維持
 
+### 💡 開発効率化：AIによるコミットメッセージ生成 (`gdc`)
+
+本プロジェクトでは、`git diff` を解析して AI に適切なコミットメッセージを提案させるためのカスタムコマンド `gdc` (Git Diff Copy) の導入を推奨しています。
+
+#### 設定方法
+
+`~/.bashrc` (Git Bash) または `$PROFILE` (PowerShell) に以下の関数を追記してください。
+
+
+
+<details>
+<summary>Git Bash (.bashrc) 用の設定</summary>
+
+```bash
+# ホームディレクトリへ移動
+cd ~
+
+# 設定ファイル（.bashrc）の作成
+touch .bashrc
+
+# Git Bash起動時に .bashrc を読み込むための設定 (.bash_profile)
+touch .bash_profile
+echo "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi" >> .bash_profile
+```
+
+```bash
+function gdc() {
+  if [ -z "$(git diff --cached)" ]; then
+    echo "No staged changes found. Please 'git add' files first."
+    return 1
+  fi
+
+  (
+    echo "以下の git diff から、コミットメッセージの候補を3つ提案してください。"
+    echo "【制約条件】"
+    echo "- 各候補はそのままターミナルで実行できるよう git commit -m \"[メッセージ]\" の形式で出力してください。"
+    echo "- メッセージ自体は英語（English）で作成してください。"
+    echo "- GitHub Flow / Conventional Commits 形式（feat:, fix: 等）を使用してください。"
+    echo "- 各候補の後に、なぜそのメッセージを選んだのかの解説を「日本語」で添えてください。"
+    echo "- コミットメッセージ以外の解説や説明はすべて「日本語」で行ってください。"
+    echo "---"
+    git diff --cached
+  ) | powershell.exe -NoProfile -Command "[Console]::InputEncoding = [System.Text.Encoding]::UTF8; [Console]::In.ReadToEnd() | Set-Clipboard"
+  echo "Prompt with 'git commit -m' copied to clipboard!"
+}
+```
+
+
+
+</details>
+
+<details>
+<summary>PowerShell 用の設定</summary>
+
+```powershell
+function gdc {
+    $diff = git diff --cached
+    if (-not $diff) {
+        Write-Host "No staged changes found." -ForegroundColor Yellow
+        return
+    }
+    $prompt = @"
+以下の git diff から、コミットメッセージの候補を3つ提案してください。
+【制約条件】
+- 各候補はそのままターミナルで実行できるよう git commit -m "[メッセージ]" の形式で出力してください。
+- メッセージ自体は英語（English）で作成してください。
+- GitHub Flow / Conventional Commits 形式（feat:, fix: 等）を使用してください。
+- 各候補の後に、なぜそのメッセージを選んだのかの解説を「日本語」で添えてください。
+- コミットメッセージ以外の解説や説明はすべて「日本語」で行ってください。
+---
+"@
+    ($prompt + "`n" + $diff) | Set-Clipboard
+    Write-Host "Prompt with 'git commit -m' copied to clipboard!" -ForegroundColor Green
+}
+
+```
+
+</details>
+
+<details>
+<summary>macOS (zsh / bash) 用の設定</summary>
+
+macOSでは `pbcopy` コマンドを使用してクリップボードに送ります。
+
+```bash
+function gdc() {
+  if [ -z "$(git diff --cached)" ]; then
+    echo "No staged changes found. Please 'git add' files first."
+    return 1
+  fi
+
+  (
+    echo "以下の git diff から、コミットメッセージの候補を3つ提案してください。"
+    echo "【制約条件】"
+    echo "- 各候補はそのままターミナルで実行できるよう git commit -m \"[メッセージ]\" の形式で出力してください。"
+    echo "- メッセージ自体は英語（English）で作成してください。"
+    echo "- GitHub Flow / Conventional Commits 形式（feat:, fix: 等）を使用してください。"
+    echo "- 各候補の後に、なぜそのメッセージを選んだのかの解説を「日本語」で添えてください。"
+    echo "- コミットメッセージ以外の解説や説明はすべて「日本語」で行ってください。"
+    echo "---"
+    git diff --cached
+  ) | pbcopy
+  echo "Prompt with 'git commit -m' copied to clipboard!"
+}
+
+```
+
+</details>
+
+
+#### 使い方
+
+1. `git add .` で変更をステージング。
+2. ターミナルで `gdc` を実行。
+3. ブラウザで Gemini 等に貼り付け。
+4. 提案された `git commit -m "..."` をコピーしてターミナルで実行。
+
 ### ディレクトリ構成 (Modular Design)
 
 将来的な機能拡張（動画解析、BI連携など）に柔軟に対応できるよう、役割ごとにディレクトリを分離しています。
