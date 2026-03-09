@@ -68,3 +68,7 @@ exclude = [
     ".venv",
     "tests",
 ]
+
+# srcレイアウト配下のモジュール重複読み込みエラーを防止
+# 例えば、src/core/ai.py が "ai" と "src.core.ai" の両方で認識されるエラーを防ぐ
+explicit_package_bases = true
