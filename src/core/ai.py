@@ -9,6 +9,7 @@ from .schema import AnalysisResult
 
 load_dotenv()
 
+# ジェネリクスの定義
 T = TypeVar("T", bound=BaseModel)
 
 
@@ -82,9 +83,9 @@ class GeminiCore:
     def generate_structured_data(
         self,
         prompt: str,
+        response_schema: type[T],  # スキーマを外から渡せるようにする
         gcs_uri: str | None = None,
         mime_type: str = "image/png",
-        response_schema: type[T] = AnalysisResult,  # スキーマを外から渡せるようにする
     ) -> T:
         """Pydanticモデルに基づいて構造化データを生成"""
 
@@ -126,8 +127,8 @@ class GeminiCore:
         self,
         prompt: str,
         gcs_uri: str,  # 画像解析なのでURIを必須にする
+        response_schema: type[T],  # デフォルト値を削除し、必須引数へ
         mime_type: str = "image/png",
-        response_schema: type[T] = AnalysisResult,
     ) -> T:
         """画像専用の解析。画像がない場合はここで先にエラーを投げる"""
         if not gcs_uri:
