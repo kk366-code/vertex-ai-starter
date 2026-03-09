@@ -87,9 +87,23 @@ class GeminiCore:
         response_schema: type[T] = AnalysisResult,  # スキーマを外から渡せるようにする
     ) -> T:
         """Pydanticモデルに基づいて構造化データを生成"""
-        contents: list[str | genai.types.Part] = [prompt]
+
+        # 画像の有無に応じたインストラクションの追加
         if gcs_uri:
-            contents.append(genai.types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type))
+            full_prompt = f"【画像あり】添付画像を解析してください。\n{prompt}"
+            contents = [
+                full_prompt,
+                genai.types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type),
+            ]
+        else:
+            # ハルシネーション対策
+            # 画像がないことをAIに強く意識させる
+            full_prompt = (
+                "【重要：画像なし】現在、画像は添付されていません。"
+                "解析は行わず、successフィールドをFalseにして報告してください。\n"
+                f"ユーザーからの指示：{prompt}"
+            )
+            contents = [full_prompt]
 
         # Pydanticモデルをresponse_schemaに指定
         config = genai.types.GenerateContentConfig(
@@ -106,6 +120,45 @@ class GeminiCore:
             raise ValueError("Geminiからのレスポンス(text)がNoneでした。")
 
         # 文字列ではなく、Pydanticモデルのインスタンスとしてパースして返す
+        return response_schema.model_validate_json(response.text)
+
+    def analyze_image(
+        self,
+        prompt: str,
+        gcs_uri: str,  # 画像解析なのでURIを必須にする
+        mime_type: str = "image/png",
+        response_schema: type[T] = AnalysisResult,
+    ) -> T:
+        """画像専用の解析。画像がない場合はここで先にエラーを投げる"""
+        if not gcs_uri:
+            raise ValueError("画像解析にはGCS URIが必須です。")
+
+        full_prompt = f"【画像解析】添付画像を詳細に確認してください。\n{prompt}"
+        contents = [full_prompt, genai.types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type)]
+        return self._execute_structured_inference(contents, response_schema)
+
+    def analyze_text(self, prompt: str, response_schema: type[T]) -> T:
+        """テキスト専用の解析。画像は一切送らない"""
+        full_prompt = f"【テキスト解析】以下の指示に従ってください。\n{prompt}"
+        contents = [full_prompt]
+        return self._execute_structured_inference(contents, response_schema)
+
+    # --- 低レイヤ: 共通ロジック ---
+
+    def _execute_structured_inference(self, contents: list, response_schema: type[T]) -> T:
+        """実際のAPI呼び出しとパースを行う共通内部メソッド"""
+        config = genai.types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=response_schema,
+            temperature=0.1,
+        )
+        response = self.client.models.generate_content(
+            model=self.model_id, contents=contents, config=config
+        )
+
+        if response.text is None:
+            raise ValueError("GeminiからのレスポンスがNoneでした。")
+
         return response_schema.model_validate_json(response.text)
 
 
