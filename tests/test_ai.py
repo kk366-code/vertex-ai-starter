@@ -9,7 +9,10 @@ def test_analyze_text_success(mocker):
 
     # 2. 期待するレスポンス（モック）を作成
     mock_response = mocker.MagicMock()
-    mock_response.text = '{"success": true, "description": "テスト成功", "objects": ["test"], "confidence_score": 0.9}'
+    mock_response.text = (
+        '{"success": true, "description": "テスト成功", '
+        '"objects": ["test"], "confidence_score": 0.9}'
+    )
 
     # 3. インスタンスのメソッドを直接モックに差し替える (狙い撃ち)
     # 文字列でのパッチではなく、オブジェクトの属性を直接書き換えます
