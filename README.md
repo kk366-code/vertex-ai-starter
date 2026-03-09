@@ -138,6 +138,18 @@ uv sync
 
 ## 🛠 開発環境の設定 (VSCode)
 
+### ターミナルから VSCode を開く設定 (`code` コマンド)
+
+ターミナルから直接ファイルやフォルダを開けるように、`code` コマンドをインストールしておくことを推奨します。
+
+1. VSCode を起動し、`Command (⌘) + Shift + P` を押してコマンドパレットを開きます。
+2. 「**shell command**」と入力し、「**シェル コマンド: PATH 内に 'code' コマンドをインストールします**」を選択します。
+3. 権限の許可を求められたら承認します。
+
+これで、プロジェクトルートで `code .` と打つだけで VSCode が起動するようになります。
+
+### Ruff の設定
+
 本プロジェクトでは `Ruff` を使用したコードの自動整形を推奨しています。以下の設定を行うことで、保存時に自動でインポート順の整理とコードフォーマットが行われます。
 
 1. **拡張機能のインストール**:
@@ -175,15 +187,21 @@ uv sync
 
 本プロジェクトでは、`git diff` を解析して AI に適切なコミットメッセージを提案させるためのカスタムコマンド `gdc` (Git Diff Copy) の導入を推奨しています。
 
+**なぜこの方法を採用するのか：**
+- **完全無料**: `aicommits` 等のツールとは異なり、有料の API キー（OpenAI API 等）を取得する必要がありません。
+- **ブラウザ活用**: `git diff` とプロンプトをワンタップでコピーし、普段お使いの ChatGPT や Gemini、Claude のブラウザ版に貼り付けるだけで最適なメッセージが得られます。
+- **高精度**: 最新の LLM ブラウザ版を利用することで、常に賢いモデルの提案を受けることができます。
+
 #### 設定方法
 
-`~/.bashrc` (Git Bash) または `$PROFILE` (PowerShell) に以下の関数を追記してください。
+
 
 
 
 <details>
 <summary>Git Bash (.bashrc) 用の設定</summary>
 
+1. 設定ファイルの作成
 ```bash
 # ホームディレクトリへ移動
 cd ~
@@ -195,6 +213,9 @@ touch .bashrc
 touch .bash_profile
 echo "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi" >> .bash_profile
 ```
+
+2. 関数の作成
+`~/.bashrc` (Git Bash) に以下の関数を追記してください。
 
 ```bash
 function gdc() {
@@ -218,12 +239,19 @@ function gdc() {
 }
 ```
 
+3. 設定の有効化
+```bash
+# 有効化する
+source ~/.bashrc
+```
 
 
 </details>
 
 <details>
 <summary>PowerShell 用の設定</summary>
+
+`$PROFILE` (PowerShell) に以下の関数を追記してください。
 
 ```powershell
 function gdc {
@@ -252,9 +280,19 @@ function gdc {
 
 <details>
 <summary>macOS (zsh / bash) 用の設定</summary>
-
 macOSでは `pbcopy` コマンドを使用してクリップボードに送ります。
 
+1. 設定ファイルを開く
+
+```bash
+# zsh の場合
+code ~/.zshrc
+
+# bash の場合 (古いOSや明示的に変更している場合)
+code ~/.bashrc
+```
+
+2. 以下の関数を設定ファイルに追記
 ```bash
 function gdc() {
   if [ -z "$(git diff --cached)" ]; then
@@ -277,6 +315,13 @@ function gdc() {
 }
 
 ```
+
+3. 設定を反映
+```bash
+source ~/.zshrc  # zsh の場合
+# または source ~/.bashrc
+```
+
 
 </details>
 
