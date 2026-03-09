@@ -194,10 +194,6 @@ uv sync
 
 #### 設定方法
 
-
-
-
-
 <details>
 <summary>Git Bash (.bashrc) 用の設定</summary>
 
@@ -216,6 +212,8 @@ echo "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi" >> .bash_profile
 ```
 
 2. 関数の作成
+
+
 `~/.bashrc` (Git Bash) に以下の関数を追記してください。
 
 ```bash
