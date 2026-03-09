@@ -41,7 +41,10 @@ class GeminiCore:
             # 「できないと言っていい」という指示は、専門用語で "Negative Constraint"（否定的制約） と呼ばれます。
             # これを明示することで、AIの中にある「間違った推論を生成しようとする確率」を強制的に下げ、
             # より論理的な判断（画像がない ＝ 解析不能）を優先させます。
-            full_prompt = f"【テキスト解析モード】画像は添付されていません。できないことはできないと回答してください。：\n{prompt}"
+            full_prompt = (
+                "【テキスト解析モード】画像は添付されていません。"
+                "できないことはできないと回答してください。：\n{prompt}"
+            )
 
         contents: list[str | genai.types.Part] = [full_prompt]
 
@@ -197,7 +200,10 @@ if __name__ == "__main__":
     bucket = os.getenv("GCS_BUCKET_NAME")
     test_uri = f"gs://{bucket}/test.jpg"
 
-    test_prompt = "この画像の内容を「日本語」で詳細に説明してください。キーは 'description' と 'objects' にしたJSON形式で返してください。"
+    test_prompt = (
+        "この画像の内容を「日本語」で詳細に説明してください。"
+        "キーは 'description' と 'objects' にしたJSON形式で返してください。"
+    )
 
     try:
         result = ai.analyze_media(test_uri, test_prompt)
