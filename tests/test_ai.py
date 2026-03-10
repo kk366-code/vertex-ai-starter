@@ -1,3 +1,6 @@
+import pytest
+from pydantic import ValidationError
+
 from core.ai import GeminiCore
 from core.schema import AnalysisResult
 
@@ -45,3 +48,32 @@ def test_analyze_text_success(mocker):
 
     # メソッドが呼ばれたかどうかも確認できる
     mock_method.assert_called_once()
+
+
+# AIがデタラメなJSONを返した場合のテスト ---
+def test_analyze_text_validation_error(mocker):
+    core = GeminiCore(project_id="test-project", location="asia-northeast1")
+
+    # 必須フィールドである 'success' が欠けている不正なレスポンス
+    mock_response = mocker.MagicMock()
+    mock_response.text = '{"description": "失敗するはず", "objects": []}'
+
+    mocker.patch.object(core.client.models, "generate_content", return_value=mock_response)
+
+    # PydanticのValidationErrorが発生することを期待する
+    with pytest.raises(ValidationError):
+        core.analyze_text(prompt="テスト", response_schema=AnalysisResult)
+
+
+# API自体が例外を投げた場合のテスト ---
+def test_analyze_text_api_failure(mocker):
+    core = GeminiCore(project_id="test-project", location="asia-northeast1")
+
+    # generate_content自体が例外（エラー）を投げるように設定
+    mocker.patch.object(core.client.models, "generate_content", side_effect=Exception("API Error"))
+
+    # プログラムが例外をキャッチせず、適切に上に投げるかを確認
+    with pytest.raises(Exception) as excinfo:
+        core.analyze_text(prompt="テスト", response_schema=AnalysisResult)
+
+    assert "API Error" in str(excinfo.value)
