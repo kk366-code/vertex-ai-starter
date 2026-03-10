@@ -1,10 +1,13 @@
+import pytest
+from pydantic import ValidationError
+
 from core.ai import GeminiCore
 from core.schema import AnalysisResult
 
 
 def test_analyze_text_success(mocker):
     # 1. GeminiCoreのインスタンスを作成
-    # (Clientの初期化でエラーが出ないよう、プロジェクトID等は適当に渡す)
+    # (実際にはAPIを叩きにいかないので、、プロジェクトID等は適当に渡す)
     core = GeminiCore(project_id="test-project", location="asia-northeast1")
 
     # 2. 期待するレスポンス（モック）を作成
@@ -14,8 +17,10 @@ def test_analyze_text_success(mocker):
         '"objects": ["test"], "confidence_score": 0.9}'
     )
 
-    # 3. インスタンスのメソッドを直接モックに差し替える (狙い撃ち)
-    # 文字列でのパッチではなく、オブジェクトの属性を直接書き換えます
+    # 3. インスタンスのメソッドを直接モックに差し替え
+    # 文字列でのパッチではなく、オブジェクトの属性を直接書き換える
+    # (ここではGoogleのサーバーへリクエストを送る関数を、
+    # 手順2で作った「偽の回答を返すだけの関数」に置き換えている)
     mock_method = mocker.patch.object(
         core.client.models, "generate_content", return_value=mock_response
     )
@@ -43,3 +48,32 @@ def test_analyze_text_success(mocker):
 
     # メソッドが呼ばれたかどうかも確認できる
     mock_method.assert_called_once()
+
+
+# AIがデタラメなJSONを返した場合のテスト ---
+def test_analyze_text_validation_error(mocker):
+    core = GeminiCore(project_id="test-project", location="asia-northeast1")
+
+    # 必須フィールドである 'success' が欠けている不正なレスポンス
+    mock_response = mocker.MagicMock()
+    mock_response.text = '{"description": "失敗するはず", "objects": []}'
+
+    mocker.patch.object(core.client.models, "generate_content", return_value=mock_response)
+
+    # PydanticのValidationErrorが発生することを期待する
+    with pytest.raises(ValidationError):
+        core.analyze_text(prompt="テスト", response_schema=AnalysisResult)
+
+
+# API自体が例外を投げた場合のテスト ---
+def test_analyze_text_api_failure(mocker):
+    core = GeminiCore(project_id="test-project", location="asia-northeast1")
+
+    # generate_content自体が例外（エラー）を投げるように設定
+    mocker.patch.object(core.client.models, "generate_content", side_effect=Exception("API Error"))
+
+    # プログラムが例外をキャッチせず、適切に上に投げるかを確認
+    with pytest.raises(Exception) as excinfo:
+        core.analyze_text(prompt="テスト", response_schema=AnalysisResult)
+
+    assert "API Error" in str(excinfo.value)
