@@ -4,7 +4,7 @@ from core.schema import AnalysisResult
 
 def test_analyze_text_success(mocker):
     # 1. GeminiCoreのインスタンスを作成
-    # (Clientの初期化でエラーが出ないよう、プロジェクトID等は適当に渡す)
+    # (実際にはAPIを叩きにいかないので、、プロジェクトID等は適当に渡す)
     core = GeminiCore(project_id="test-project", location="asia-northeast1")
 
     # 2. 期待するレスポンス（モック）を作成
@@ -14,8 +14,10 @@ def test_analyze_text_success(mocker):
         '"objects": ["test"], "confidence_score": 0.9}'
     )
 
-    # 3. インスタンスのメソッドを直接モックに差し替える (狙い撃ち)
-    # 文字列でのパッチではなく、オブジェクトの属性を直接書き換えます
+    # 3. インスタンスのメソッドを直接モックに差し替え
+    # 文字列でのパッチではなく、オブジェクトの属性を直接書き換える
+    # (ここではGoogleのサーバーへリクエストを送る関数を、
+    # 手順2で作った「偽の回答を返すだけの関数」に置き換えている)
     mock_method = mocker.patch.object(
         core.client.models, "generate_content", return_value=mock_response
     )
