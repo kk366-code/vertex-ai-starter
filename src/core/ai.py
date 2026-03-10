@@ -5,8 +5,6 @@ from dotenv import load_dotenv
 from google import genai
 from pydantic import BaseModel
 
-from .schema import AnalysisResult
-
 load_dotenv()
 
 # ジェネリクスの定義
@@ -51,7 +49,7 @@ class GeminiCore:
         # Pydanticモデルをresponse_schemaに指定
         config = genai.types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=AnalysisResult,
+            response_schema=response_schema,
             temperature=0.1,
         )
 
