@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 from dotenv import load_dotenv
@@ -5,8 +6,6 @@ from dotenv import load_dotenv
 from src.core.ai import GeminiCore
 from src.core.schema import AnalysisResult
 from src.core.storage import CloudStorageManager
-
-# from src.core.storage import CloudStorageManager # 今回は一旦パス指定でテスト
 
 load_dotenv()
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
@@ -16,7 +15,7 @@ if PROJECT_ID is None:
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")  # デフォルト値を設定可能
 
 
-def main():
+async def main():
     # 1. 環境変数の準備
     project_id = PROJECT_ID
     if project_id is None:
@@ -41,9 +40,17 @@ def main():
 
         # 4. 画像解析用メソッド を呼び出す
         storage = CloudStorageManager()
+
+        # TODO: ここも非同期化する場合は await をつける
+        print("📤 画像をアップロード中...")
         gcs_uri = storage.upload_file("upload/test.jpg")
+
         # 戻り値は AnalysisResult 型のインスタンスです
-        result = core.analyze_image(prompt=prompt, gcs_uri=gcs_uri, response_schema=AnalysisResult)
+        result = await core.analyze_image(
+            prompt=prompt,
+            gcs_uri=gcs_uri,
+            response_schema=AnalysisResult,
+        )
 
         print("\n✨ --- 解析結果 (Pydantic Object) ---")
         # 辞書形式で表示したい場合は .model_dump() を使います
@@ -62,4 +69,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
