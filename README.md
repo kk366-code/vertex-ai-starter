@@ -303,7 +303,7 @@ code $PROFILE
 開いたファイルに、先ほどの function gdc { ... } を貼り付けます。
 
 
-> [!WARNING]
+> ⚠️
 > **重要：保存時の文字コードについて**
 >
 > PowerShellで日本語を正しく扱うため、VS Code の右下にあるエンコーディング設定から **UTF-8 with BOM** を選択して保存してください。
