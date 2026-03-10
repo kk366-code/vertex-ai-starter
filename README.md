@@ -250,10 +250,15 @@ source ~/.bashrc
 <details>
 <summary>PowerShell 用の設定</summary>
 
-`$PROFILE` (PowerShell) に以下の関数を追記してください。
+`$PROFILE` (PowerShell) に以下の関数を追記します。
 
 ```powershell
 function gdc {
+    # PowerShellが外部コマンド（git）から受け取るエンコーディングをUTF-8に設定
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    # 出力のエンコーディングを UTF8 に一時的に固定（Gitの日本語出力を正しく受け取るため）
+    $OutputEncoding = [System.Text.Encoding]::UTF8
+
     $diff = git diff --cached
     if (-not $diff) {
         Write-Host "No staged changes found." -ForegroundColor Yellow
@@ -272,6 +277,44 @@ function gdc {
     ($prompt + "`n" + $diff) | Set-Clipboard
     Write-Host "Prompt with 'git commit -m' copied to clipboard!" -ForegroundColor Green
 }
+
+```
+
+### 手順
+
+1. 設定ファイルの作成と編集
+PowerShellを開き、以下のコマンドを順番に実行して設定ファイルを準備します。
+
+```bash
+# 1. 設定ファイルのパスを確認
+$PROFILE
+
+# 2. ファイルが存在しない場合は作成（フォルダごと強制作成）
+if (!(Test-Path $PROFILE)) {
+    New-Item -Type File -Path $PROFILE -Force
+}
+
+# 3. VS Code で設定ファイルを開く
+code $PROFILE
+
+```
+
+2. 関数の追記と保存（重要：文字コード）
+開いたファイルに、先ほどの function gdc { ... } を貼り付けます。
+
+
+> [!WARNING]
+> **重要：保存時の文字コードについて**
+>
+> PowerShellで日本語を正しく扱うため、VS Code の右下にあるエンコーディング設定から **UTF-8 with BOM** を選択して保存してください。
+
+
+3. 設定の反映
+保存後、以下のコマンドを打つか PowerShell を再起動すれば gdc が有効になります。
+
+```bash
+# $PROFILE を UTF-8 with BOM で保存しなおしたときなども以下を実行
+. $PROFILE
 
 ```
 
