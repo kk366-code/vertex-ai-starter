@@ -23,7 +23,7 @@ class AnalysisRequest(BaseModel):
     gcs_uri: str | None = None
 
 
-@app.post("/analyze", response_model=AnalysisResult)
+@app.post("/analyze", response_model=AnalysisResult | dict)
 async def analyze(request: AnalysisRequest):
     """
     画像を解析して構造化データを返すエンドポイント
@@ -31,15 +31,17 @@ async def analyze(request: AnalysisRequest):
     try:
         if request.gcs_uri:
             # 画像解析
-            result = await ai_core.analyze_image(
-                prompt=request.prompt, gcs_uri=request.gcs_uri, response_schema=AnalysisResult
+            return await ai_core.analyze_image(
+                prompt=request.prompt,
+                gcs_uri=request.gcs_uri,
+                response_schema=AnalysisResult,
             )
         else:
-            # テキスト解析
-            result = await ai_core.analyze_text(
-                prompt=request.prompt, response_schema=AnalysisResult
+            # テキスト解析（dictが返る）
+            answer = await ai_core.analyze_text_simple(
+                prompt=request.prompt,
             )
-        return result
+            return {"success": True, "answer": answer}
 
     except Exception as e:
         # エラー時は400番や500番のエラーを適切に返す
