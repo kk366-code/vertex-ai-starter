@@ -20,6 +20,24 @@ class GeminiCore:
         self.client = genai.Client(vertexai=True, project=project_id, location=location)
         self.model_id = "gemini-2.5-flash"
 
+    async def analyze_text_simple(self, prompt: str) -> str:
+        """テキスト専用の解析。スキーマに縛られず、自由な文字列で回答する"""
+        full_prompt = f"あなたは親切なAIアシスタントです。以下の問いに答えてください。\n{prompt}"
+
+        # response_schema を指定せずに呼び出す
+        response = await self.client.aio.models.generate_content(
+            model=self.model_id,
+            contents=[full_prompt],
+            config=genai.types.GenerateContentConfig(
+                temperature=0.7,  # 自由回答なので少し創造性を上げる
+            ),
+        )
+
+        if response.text is None:
+            raise ValueError("Geminiからのレスポンスが空でした。")
+
+        return response.text
+
     async def generate_structured_data(
         self,
         prompt: str,
