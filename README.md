@@ -338,8 +338,12 @@ code ~/.bashrc
 2. 以下の関数を設定ファイルに追記
 ```bash
 function gdc() {
-  if [ -z "$(git diff --cached)" ]; then
-    echo "No staged changes found. Please 'git add' files first."
+  # 1. ステージングされている差分があるか確認
+  local diff=$(git diff --cached)
+
+  if [ -z "$diff" ]; then
+    echo "❌ No staged changes found."
+    echo "先に 'git add' を実行して、コミットしたいファイルを選択してください。"
     return 1
   fi
 
@@ -352,7 +356,7 @@ function gdc() {
     echo "- 各候補の後に、なぜそのメッセージを選んだのかの解説を「日本語」で添えてください。"
     echo "- コミットメッセージ以外の解説や説明はすべて「日本語」で行ってください。"
     echo "---"
-    git diff --cached
+    echo "$diff"
   ) | pbcopy
   echo "Prompt with 'git commit -m' copied to clipboard!"
 }
