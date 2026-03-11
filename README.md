@@ -283,6 +283,7 @@ function gdc {
 ### 手順
 
 1. 設定ファイルの作成と編集
+
 PowerShellを開き、以下のコマンドを順番に実行して設定ファイルを準備します。
 
 ```bash
@@ -300,6 +301,7 @@ code $PROFILE
 ```
 
 2. 関数の追記と保存（重要：文字コード）
+
 開いたファイルに、先ほどの function gdc { ... } を貼り付けます。
 
 
@@ -310,6 +312,7 @@ code $PROFILE
 
 
 3. 設定の反映
+
 保存後、以下のコマンドを打つか PowerShell を再起動すれば gdc が有効になります。
 
 ```bash
@@ -338,8 +341,12 @@ code ~/.bashrc
 2. 以下の関数を設定ファイルに追記
 ```bash
 function gdc() {
-  if [ -z "$(git diff --cached)" ]; then
-    echo "No staged changes found. Please 'git add' files first."
+  # 1. ステージングされている差分があるか確認
+  local diff=$(git diff --cached)
+
+  if [ -z "$diff" ]; then
+    echo "❌ No staged changes found."
+    echo "先に 'git add' を実行して、コミットしたいファイルを選択してください。"
     return 1
   fi
 
@@ -352,7 +359,7 @@ function gdc() {
     echo "- 各候補の後に、なぜそのメッセージを選んだのかの解説を「日本語」で添えてください。"
     echo "- コミットメッセージ以外の解説や説明はすべて「日本語」で行ってください。"
     echo "---"
-    git diff --cached
+    echo "$diff"
   ) | pbcopy
   echo "Prompt with 'git commit -m' copied to clipboard!"
 }
