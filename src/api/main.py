@@ -54,7 +54,7 @@ class AnalysisRequest(BaseModel):
 
 
 @app.post("/analyze", response_model=AnalysisResult | dict)
-async def analyze(request: AnalysisRequest, _=Security(verify_api_key)):
+async def analyze(request: AnalysisRequest, _=Security(verify_api_key)):  # noqa: B008
     """
     画像を解析して構造化データを返すエンドポイント（要APIキー認証）
     """
