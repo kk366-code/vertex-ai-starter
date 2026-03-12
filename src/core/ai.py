@@ -151,17 +151,29 @@ class GeminiManager:
 
 
 if __name__ == "__main__":
-    ai = GeminiManager()
-    bucket = os.getenv("GCS_BUCKET_NAME")
-    test_uri = f"gs://{bucket}/test.jpg"
+    import asyncio
 
-    test_prompt = (
-        "この画像の内容を「日本語」で詳細に説明してください。"
-        "キーは 'description' と 'objects' にしたJSON形式で返してください。"
-    )
+    from src.core.schema import AnalysisResult
 
-    try:
-        result = ai.analyze_media(test_uri, test_prompt)
-        print(f"AI Response:\n{result}")
-    except Exception as e:
-        print(f"エラーが発生しました:\n{e}")
+    async def test_run():
+        # インスタンス化 (GeminiCore を使用)
+        ai = GeminiCore(
+            project_id=os.getenv("GOOGLE_CLOUD_PROJECT", ""),
+            location=os.getenv("GOOGLE_CLOUD_LOCATION", "asia-northeast1"),
+        )
+
+        bucket = os.getenv("GCS_BUCKET_NAME")
+        test_uri = f"gs://{bucket}/test.jpg"
+        test_prompt = "この画像を解析してください。"
+
+        try:
+            # analyze_image メソッドを使用 (非同期なので await)
+            result = await ai.analyze_image(
+                prompt=test_prompt, gcs_uri=test_uri, response_schema=AnalysisResult
+            )
+            print(f"✨ AI Response (Structured):\n{result.model_dump_json(indent=2)}")
+        except Exception as e:
+            print(f"❌ エラーが発生しました:\n{e}")
+
+    # 非同期実行
+    asyncio.run(test_run())
