@@ -9,12 +9,12 @@
 ## 🛠 セットアップ
 
 ### 1. 準備
+
 - Google Cloud プロジェクトの作成
 - Vertex AI API の有効化
 - 支払い情報の紐付け
 
 ### 2. 環境構築
-
 
 ## 🛠 Google Cloud CLI (gcloud) の導入
 
@@ -82,7 +82,6 @@ gcloud init
 gcloud auth application-default login
 ```
 
-
 ### 4. 接続確認
 
 正しく設定されたか確認します。
@@ -90,7 +89,6 @@ gcloud auth application-default login
 ```bash
 gcloud --version
 ```
-
 
 ### 5. 環境変数の設定
 
@@ -121,7 +119,9 @@ uv sync
 ```
 
 ## データ基盤 (Google Cloud Storage)
+
 本プロジェクトでは、Vertex AI での学習効率とコスト最適化を両立するため、以下の GCS 構成を採用しています。
+
 - クラス: Standard
   - Vertex AI による頻繁なデータ読み込み（モデル訓練・推論）が発生するため、取り出し料金のない Standard を選択。
 
@@ -129,12 +129,12 @@ uv sync
   - 大規模なデータセットの管理を想定し、ファイルシステムに近い階層構造を有効化。これにより、AI/ML パイプラインにおけるフォルダのリネームや一覧表示のパフォーマンスを最適化しています。
 
 ### セキュリティ設計
+
 - 公開アクセスの防止: オン
   - 機密性の高い学習データやAPIキーの流出を防ぐため、インターネットからの直接アクセスを完全に遮断しています。
 
 - アクセス制御: Uniform（均一性）
   - Hierarchical Namespace との互換性を保ちつつ、IAM（Identity and Access Management）による一元的な権限管理を行い、最小権限の原則（Least Privilege）を適用しています。
-
 
 ## 🛠 開発環境の設定 (VSCode)
 
@@ -171,13 +171,14 @@ uv sync
    }
   ```
 
-
 ## 開発プロセス
 
 実務的なチーム開発を想定し、以下のワークフローを採用しています。
 
 ### ブランチ戦略 (GitHub Flow)
+
 本プロジェクトでは GitHub Flow を採用しています。
+
 1. `main` ブランチから`feat/`, `fix/` などの接頭辞を用いた機能単位のブランチを作成
 2. 実装完了後、GitHub 上でプルリクエストを作成
 3. セルフレビューを経て `main` ブランチへマージ
@@ -188,6 +189,7 @@ uv sync
 本プロジェクトでは、`git diff` を解析して AI に適切なコミットメッセージを提案させるためのカスタムコマンド `gdc` (Git Diff Copy) の導入を推奨しています。
 
 **なぜこの方法を採用するのか：**
+
 - **完全無料**: `aicommits` 等のツールとは異なり、有料の API キー（OpenAI API 等）を取得する必要がありません。
 - **ブラウザ活用**: `git diff` とプロンプトをワンタップでコピーし、普段お使いの ChatGPT や Gemini、Claude のブラウザ版に貼り付けるだけで最適なメッセージが得られます。
 - **高精度**: 最新の LLM ブラウザ版を利用することで、常に賢いモデルの提案を受けることができます。
@@ -211,8 +213,7 @@ touch .bash_profile
 echo "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi" >> .bash_profile
 ```
 
-2. 関数の作成
-
+1. 関数の作成
 
 `~/.bashrc` (Git Bash) に以下の関数を追記してください。
 
@@ -226,6 +227,7 @@ function gdc() {
   (
     echo "以下の git diff から、コミットメッセージの候補を3つ提案してください。"
     echo "【制約条件】"
+    echo "- 1行のタイトルのみで書いてください。詳細（Body）は不要です。Bodyの提案も不要です。"
     echo "- 各候補はそのままターミナルで実行できるよう git commit -m \"[メッセージ]\" の形式で出力してください。"
     echo "- メッセージ自体は英語（English）で作成してください。"
     echo "- GitHub Flow / Conventional Commits 形式（feat:, fix: 等）を使用してください。"
@@ -238,7 +240,7 @@ function gdc() {
 }
 ```
 
-3. 設定の有効化
+1. 設定の有効化
 
 ```bash
 # 有効化する
@@ -267,6 +269,7 @@ function gdc {
     $prompt = @"
 以下の git diff から、コミットメッセージの候補を3つ提案してください。
 【制約条件】
+- 1行のタイトルのみで書いてください。詳細（Body）は不要です。Bodyの提案も不要です。
 - 各候補はそのままターミナルで実行できるよう git commit -m "[メッセージ]" の形式で出力してください。
 - メッセージ自体は英語（English）で作成してください。
 - GitHub Flow / Conventional Commits 形式（feat:, fix: 等）を使用してください。
@@ -300,18 +303,16 @@ code $PROFILE
 
 ```
 
-2. 関数の追記と保存（重要：文字コード）
+1. 関数の追記と保存（重要：文字コード）
 
 開いたファイルに、先ほどの function gdc { ... } を貼り付けます。
-
 
 > ⚠️
 > **重要：保存時の文字コードについて**
 >
 > PowerShellで日本語を正しく扱うため、VS Code の右下にあるエンコーディング設定から **UTF-8 with BOM** を選択して保存してください。
 
-
-3. 設定の反映
+1. 設定の反映
 
 保存後、以下のコマンドを打つか PowerShell を再起動すれば gdc が有効になります。
 
@@ -338,7 +339,8 @@ code ~/.zshrc
 code ~/.bashrc
 ```
 
-2. 以下の関数を設定ファイルに追記
+1. 以下の関数を設定ファイルに追記
+
 ```bash
 function gdc() {
   # 1. ステージングされている差分があるか確認
@@ -353,6 +355,7 @@ function gdc() {
   (
     echo "以下の git diff から、コミットメッセージの候補を3つ提案してください。"
     echo "【制約条件】"
+    echo "- 1行のタイトルのみで書いてください。詳細（Body）は不要です。Bodyの提案も不要です。"
     echo "- 各候補はそのままターミナルで実行できるよう git commit -m \"[メッセージ]\" の形式で出力してください。"
     echo "- メッセージ自体は英語（English）で作成してください。"
     echo "- GitHub Flow / Conventional Commits 形式（feat:, fix: 等）を使用してください。"
@@ -366,7 +369,8 @@ function gdc() {
 
 ```
 
-3. 設定を反映
+1. 設定を反映
+
 ```bash
 source ~/.zshrc  # zsh の場合
 # または source ~/.bashrc
@@ -374,13 +378,98 @@ source ~/.zshrc  # zsh の場合
 
 </details>
 
-
 #### 使い方
 
 1. `git add .` で変更をステージング。
 2. ターミナルで `gdc` を実行。
 3. ブラウザで Gemini 等に貼り付け。
 4. 提案された `git commit -m "..."` をコピーしてターミナルで実行。
+
+## 💡 開発効率化：AIへのコンテキスト共有 (`axc`)
+
+AIアシスタントとの新しいチャットを開始する際、プロジェクトの全コードと規約（`CLAUDE.md`, `SKILL.md`）を瞬時に共有するためのコマンド `axc` (AI Context Copy) の導入を推奨します。
+
+#### 設定方法
+
+##### 必要なランタイムのインストール
+
+- **Node.js (LTS推奨)**: AIコンテキスト生成ツール (`repomix`) の実行に必要です。
+- [Node.js 公式サイト](https://nodejs.org/) からインストールするか、パッケージマネージャー（`brew`, `nvm`, `fnm` 等）を使用してください。
+
+<details>
+<summary>PowerShell 用の設定</summary>
+
+`$PROFILE` に以下の関数を追記してください。
+
+```powershell
+function axc {
+    # エンコーディング設定
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    $OutputEncoding = [System.Text.Encoding]::UTF8
+    
+    Write-Host "🔄 Generating codebase context with npx repomix..." -ForegroundColor Cyan
+    $prompt = @"
+このプロジェクトのコードベースを渡します。特に CLAUDE.md にあるプロジェクト構造と、SKILL.md にある実装パターン（Python 3.14+, Pydantic, Vertex AIの非同期処理など）を厳守してください。これ以降、新しいコードの提案や修正はすべてこれらの規約に従ってください。
+---
+"@
+    # repomixを実行して出力を取得
+    $repoContent = npx repomix --stdout
+    ($prompt + "`n" + $repoContent) | Set-Clipboard
+    Write-Host "✅ Codebase and prompt copied to clipboard!" -ForegroundColor Green
+}
+
+```
+
+> [!IMPORTANT]
+> 保存時は **UTF-8 with BOM** で保存してください。
+
+</details>
+
+<details>
+<summary>Git Bash (.bashrc) 用の設定</summary>
+
+`~/.bashrc` に以下の関数を追記してください。
+
+```bash
+function axc() {
+  echo "🔄 Generating codebase context..."
+  (
+    echo "このプロジェクトのコードベースを渡します。特に CLAUDE.md にあるプロジェクト構造と、SKILL.md にある実装パターン（Python 3.14+, Pydantic, Vertex AIの非同期処理など）を厳守してください。これ以降、新しいコードの提案や修正はすべてこれらの規約に従ってください。"
+    echo "---"
+    npx repomix --stdout
+  ) | powershell.exe -NoProfile -Command "[Console]::InputEncoding = [System.Text.Encoding]::UTF8; [Console]::In.ReadToEnd() | Set-Clipboard"
+  echo "✅ Codebase and prompt copied to clipboard!"
+}
+
+```
+
+</details>
+
+<details>
+<summary>macOS (zsh) 用の設定</summary>
+
+`~/.zshrc` に以下の関数を追記してください（`pbcopy` を使用）。
+
+```bash
+function axc() {
+  echo "🔄 Generating codebase context..."
+  (
+    echo "このプロジェクトのコードベースを渡します。特に CLAUDE.md にあるプロジェクト構造と、SKILL.md にある実装パターン（Python 3.14+, Pydantic, Vertex AIの非同期処理など）を厳守してください。これ以降、新しいコードの提案や修正はすべてこれらの規約に従ってください。"
+    echo "---"
+    npx repomix --stdout
+  ) | pbcopy
+  echo "✅ Codebase and prompt copied to clipboard!"
+}
+
+```
+
+</details>
+
+#### 使い方
+
+1. ターミナルで `axc` を実行。
+2. AI（ChatGPT, Claude, Gemini等）のチャット欄に貼り付け。
+3. これだけで、AIは最新のコードとプロジェクト固有のルールを完全に把握した状態で回答を開始します。
 
 ### ディレクトリ構成 (Modular Design)
 
