@@ -477,3 +477,82 @@ function axc {
 - `src/schemas/`: AIのレスポンス（JSON）の型定義（予定）
 - `src/processors/`: 動画のチャンク化などメディア処理ロジック（予定）
 - `upload/`: 処理対象メディアの一時保管ディレクトリ（`.gitignore` 対象）
+
+## 🛡️ セキュリティへの取り組み
+
+本プロジェクトでは、機密情報の漏洩を未然に防ぐため、以下の対策を講じています。
+
+### Gitleaks によるシークレットスキャン
+
+リポジトリのコミット履歴やソースコード内に、APIキーやパスワードなどの秘密情報が混入していないかを確認するため、`gitleaks` を導入しています。
+
+- **デプロイ前チェック**: クラウド環境（Cloud Run）へのデプロイ前に必ずスキャンを実行し、`no leaks found` であることを確認しています。
+- **実行コマンド**:
+
+  ```bash
+  gitleaks detect --verbose
+
+  ```
+
+
+## 🚀 デプロイ (Google Cloud Run)
+
+本プロジェクトは、スケーラビリティとコスト効率を両立するため、Google Cloud Run（サーバーレス）へのデプロイを前提としています。
+
+### 🏗️ インフラ構成
+- **Runtime**: Python 3.14 (Docker)
+- **Deployment**: Google Cloud Run
+- **CI/CD**: GitHub + Cloud Build (推奨)
+- **AI Backend**: Vertex AI (Gemini 2.5 Flash)
+
+### 1. APIの有効化
+
+プロジェクトを初めて使用する場合は。以下のコマンドを実行して、必要なサービスを有効化してください。
+
+```bash
+gcloud services enable run.googleapis.com \
+                       artifactregistry.googleapis.com \
+                       cloudbuild.googleapis.com \
+                       aiplatform.googleapis.com
+
+```
+
+### 2. IAM権限の設定
+
+Cloud Run から Vertex AI を呼び出すために、実行サービスアカウントに権限を付与します。
+
+```bash
+# プロジェクト情報の取得
+PROJECT_ID=$(gcloud config get-value project)
+PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+
+# Vertex AI ユーザー権限の付与
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+    --role="roles/aiplatform.user"
+
+# GCS 操作権限の付与（画像解析を利用する場合）
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+    --role="roles/storage.objectUser"
+
+```
+
+### 3. デプロイの実行
+
+uv を使用した Docker ビルドを行い、Cloud Run へデプロイします。
+
+```bash
+gcloud run deploy gemini-analysis-api \
+    --source . \
+    --region asia-northeast1 \
+    --allow-unauthenticated \
+    --set-env-vars GOOGLE_CLOUD_PROJECT=$(gcloud config get-value project),GOOGLE_CLOUD_LOCATION=asia-northeast1
+
+```
+
+### ⚠️ デプロイ時の注意点 (BuildKit)
+
+ ~~Google Cloud Build で `uv` のキャッシュマウント機能を利用するため、ビルド時に **BuildKit** を有効にする必要があります。デプロイコマンドを実行する際は、必ず `--set-build-env-vars DOCKER_BUILDKIT=1` フラグを含めてください。~~
+
+当初は uv のキャッシュマウント機能（BuildKit）を利用してビルド時間の短縮を図っていましたが、Cloud Build 環境での互換性を重視し、現在は標準的なマルチステージビルド構成を採用しています。これにより、特定のビルド環境に依存せず、安定したデプロイが可能です。
