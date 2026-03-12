@@ -197,6 +197,60 @@ uv sync
 #### 設定方法
 
 <details>
+<summary>macOS (zsh / bash) 用の設定</summary>
+
+macOSでは `pbcopy` コマンドを使用してクリップボードに送ります。
+
+1. 設定ファイルを開く
+
+```bash
+# zsh の場合
+code ~/.zshrc
+
+# bash の場合 (古いOSや明示的に変更している場合)
+code ~/.bashrc
+```
+
+1. 以下の関数を設定ファイルに追記
+
+```bash
+function gdc() {
+  # 1. ステージングされている差分があるか確認
+  local diff=$(git diff --cached)
+
+  if [ -z "$diff" ]; then
+    echo "❌ No staged changes found."
+    echo "先に 'git add' を実行して、コミットしたいファイルを選択してください。"
+    return 1
+  fi
+
+  (
+    echo "以下の git diff から、コミットメッセージの候補を3つ提案してください。"
+    echo "【制約条件】"
+    echo "- 1行のタイトルのみで書いてください。詳細（Body）は不要です。Bodyの提案も不要です。"
+    echo "- 各候補はそのままターミナルで実行できるよう git commit -m \"[メッセージ]\" の形式で出力してください。"
+    echo "- メッセージ自体は英語（English）で作成してください。"
+    echo "- GitHub Flow / Conventional Commits 形式（feat:, fix: 等）を使用してください。"
+    echo "- 各候補の後に、なぜそのメッセージを選んだのかの解説を「日本語」で添えてください。"
+    echo "- コミットメッセージ以外の解説や説明はすべて「日本語」で行ってください。"
+    echo "---"
+    echo "$diff"
+  ) | pbcopy
+  echo "Prompt with 'git commit -m' copied to clipboard!"
+}
+
+```
+
+1. 設定を反映
+
+```bash
+source ~/.zshrc  # zsh の場合
+# または source ~/.bashrc
+```
+
+</details>
+
+<details>
 <summary>Git Bash (.bashrc) 用の設定</summary>
 
 1. 設定ファイルの作成
@@ -324,60 +378,6 @@ code $PROFILE
 
 </details>
 
-<details>
-<summary>macOS (zsh / bash) 用の設定</summary>
-
-macOSでは `pbcopy` コマンドを使用してクリップボードに送ります。
-
-1. 設定ファイルを開く
-
-```bash
-# zsh の場合
-code ~/.zshrc
-
-# bash の場合 (古いOSや明示的に変更している場合)
-code ~/.bashrc
-```
-
-1. 以下の関数を設定ファイルに追記
-
-```bash
-function gdc() {
-  # 1. ステージングされている差分があるか確認
-  local diff=$(git diff --cached)
-
-  if [ -z "$diff" ]; then
-    echo "❌ No staged changes found."
-    echo "先に 'git add' を実行して、コミットしたいファイルを選択してください。"
-    return 1
-  fi
-
-  (
-    echo "以下の git diff から、コミットメッセージの候補を3つ提案してください。"
-    echo "【制約条件】"
-    echo "- 1行のタイトルのみで書いてください。詳細（Body）は不要です。Bodyの提案も不要です。"
-    echo "- 各候補はそのままターミナルで実行できるよう git commit -m \"[メッセージ]\" の形式で出力してください。"
-    echo "- メッセージ自体は英語（English）で作成してください。"
-    echo "- GitHub Flow / Conventional Commits 形式（feat:, fix: 等）を使用してください。"
-    echo "- 各候補の後に、なぜそのメッセージを選んだのかの解説を「日本語」で添えてください。"
-    echo "- コミットメッセージ以外の解説や説明はすべて「日本語」で行ってください。"
-    echo "---"
-    echo "$diff"
-  ) | pbcopy
-  echo "Prompt with 'git commit -m' copied to clipboard!"
-}
-
-```
-
-1. 設定を反映
-
-```bash
-source ~/.zshrc  # zsh の場合
-# または source ~/.bashrc
-```
-
-</details>
-
 #### 使い方
 
 1. `git add .` で変更をステージング。
@@ -393,6 +393,46 @@ AIアシスタントとの新しいチャットを開始する際、プロジェ
 
 - **Node.js (LTS推奨)**: AIコンテキスト生成ツール (`repomix`) の実行に必要です。
 - [Node.js 公式サイト](https://nodejs.org/) からインストールするか、パッケージマネージャー（`brew`, `nvm`, `fnm` 等）を使用してください。
+
+<details>
+<summary>macOS (zsh) 用の設定</summary>
+
+`~/.zshrc` に以下の関数を追記してください（`pbcopy` を使用）。
+
+```bash
+function axc() {
+  echo "🔄 Generating codebase context..."
+  (
+    echo "このプロジェクトのコードベースを渡します。特に CLAUDE.md にあるプロジェクト構造と、SKILL.md にある実装パターン（Python 3.14+, Pydantic, Vertex AIの非同期処理など）を厳守してください。これ以降、新しいコードの提案や修正はすべてこれらの規約に従ってください。"
+    echo "---"
+    npx repomix --stdout
+  ) | pbcopy
+  echo "✅ Codebase and prompt copied to clipboard!"
+}
+
+```
+
+</details>
+
+<details>
+<summary>Git Bash (.bashrc) 用の設定</summary>
+
+`~/.bashrc` に以下の関数を追記してください。
+
+```bash
+function axc() {
+  echo "🔄 Generating codebase context..."
+  (
+    echo "このプロジェクトのコードベースを渡します。特に CLAUDE.md にあるプロジェクト構造と、SKILL.md にある実装パターン（Python 3.14+, Pydantic, Vertex AIの非同期処理など）を厳守してください。これ以降、新しいコードの提案や修正はすべてこれらの規約に従ってください。"
+    echo "---"
+    npx repomix --stdout
+  ) | powershell.exe -NoProfile -Command "[Console]::InputEncoding = [System.Text.Encoding]::UTF8; [Console]::In.ReadToEnd() | Set-Clipboard"
+  echo "✅ Codebase and prompt copied to clipboard!"
+}
+
+```
+
+</details>
 
 <details>
 <summary>PowerShell 用の設定</summary>
@@ -418,48 +458,8 @@ function axc {
 
 ```
 
-> [!IMPORTANT]
+> ⚠️
 > 保存時は **UTF-8 with BOM** で保存してください。
-
-</details>
-
-<details>
-<summary>Git Bash (.bashrc) 用の設定</summary>
-
-`~/.bashrc` に以下の関数を追記してください。
-
-```bash
-function axc() {
-  echo "🔄 Generating codebase context..."
-  (
-    echo "このプロジェクトのコードベースを渡します。特に CLAUDE.md にあるプロジェクト構造と、SKILL.md にある実装パターン（Python 3.14+, Pydantic, Vertex AIの非同期処理など）を厳守してください。これ以降、新しいコードの提案や修正はすべてこれらの規約に従ってください。"
-    echo "---"
-    npx repomix --stdout
-  ) | powershell.exe -NoProfile -Command "[Console]::InputEncoding = [System.Text.Encoding]::UTF8; [Console]::In.ReadToEnd() | Set-Clipboard"
-  echo "✅ Codebase and prompt copied to clipboard!"
-}
-
-```
-
-</details>
-
-<details>
-<summary>macOS (zsh) 用の設定</summary>
-
-`~/.zshrc` に以下の関数を追記してください（`pbcopy` を使用）。
-
-```bash
-function axc() {
-  echo "🔄 Generating codebase context..."
-  (
-    echo "このプロジェクトのコードベースを渡します。特に CLAUDE.md にあるプロジェクト構造と、SKILL.md にある実装パターン（Python 3.14+, Pydantic, Vertex AIの非同期処理など）を厳守してください。これ以降、新しいコードの提案や修正はすべてこれらの規約に従ってください。"
-    echo "---"
-    npx repomix --stdout
-  ) | pbcopy
-  echo "✅ Codebase and prompt copied to clipboard!"
-}
-
-```
 
 </details>
 
