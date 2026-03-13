@@ -171,6 +171,21 @@ uv sync
    }
   ```
 
+## 🚀 実行方法 (Usage)
+
+### 1. ローカルでの起動
+
+依存関係の管理には `uv` を使用しています。
+
+```bash
+# 依存関係のインストール
+uv sync
+
+# サーバーの起動（ポート8000で起動します）
+uv run uvicorn src.api.main:app --reload
+
+```
+
 ## 開発プロセス
 
 実務的なチーム開発を想定し、以下のワークフローを採用しています。
@@ -283,6 +298,7 @@ function gdc() {
     echo "【制約条件】"
     echo "- 1行のタイトルのみで書いてください。詳細（Body）は不要です。Bodyの提案も不要です。"
     echo "- 各候補はそのままターミナルで実行できるよう git commit -m \"[メッセージ]\" の形式で出力してください。"
+    echo "- コピペしやすいように、コマンドはコードブロック形式で出力してください。"
     echo "- メッセージ自体は英語（English）で作成してください。"
     echo "- GitHub Flow / Conventional Commits 形式（feat:, fix: 等）を使用してください。"
     echo "- 各候補の後に、なぜそのメッセージを選んだのかの解説を「日本語」で添えてください。"
@@ -324,6 +340,7 @@ function gdc {
 以下の git diff から、コミットメッセージの候補を3つ提案してください。
 【制約条件】
 - 1行のタイトルのみで書いてください。詳細（Body）は不要です。Bodyの提案も不要です。
+- コピペしやすいように、コマンドはコードブロック形式で出力してください。
 - 各候補はそのままターミナルで実行できるよう git commit -m "[メッセージ]" の形式で出力してください。
 - メッセージ自体は英語（English）で作成してください。
 - GitHub Flow / Conventional Commits 形式（feat:, fix: 等）を使用してください。
@@ -494,12 +511,12 @@ function axc {
 
   ```
 
-
 ## 🚀 デプロイ (Google Cloud Run)
 
 本プロジェクトは、スケーラビリティとコスト効率を両立するため、Google Cloud Run（サーバーレス）へのデプロイを前提としています。
 
 ### 🏗️ インフラ構成
+
 - **Runtime**: Python 3.14 (Docker)
 - **Deployment**: Google Cloud Run
 - **CI/CD**: GitHub + Cloud Build (推奨)
@@ -556,3 +573,16 @@ gcloud run deploy gemini-analysis-api \
  ~~Google Cloud Build で `uv` のキャッシュマウント機能を利用するため、ビルド時に **BuildKit** を有効にする必要があります。デプロイコマンドを実行する際は、必ず `--set-build-env-vars DOCKER_BUILDKIT=1` フラグを含めてください。~~
 
 当初は uv のキャッシュマウント機能（BuildKit）を利用してビルド時間の短縮を図っていましたが、Cloud Build 環境での互換性を重視し、現在は標準的なマルチステージビルド構成を採用しています。これにより、特定のビルド環境に依存せず、安定したデプロイが可能です。
+
+### 📈 運用の工夫（スケーリングとコスト最適化）
+
+本プロジェクトでは Google Cloud Run のサーバーレス特性を活かし、以下の運用ルールを適用しています。
+
+- **コスト最適化**: 通常時は `min-instances: 0` に設定し、リクエストがない時間帯の課金をゼロに抑えています。
+- **ユーザー体験の向上**: コールドスタートによる遅延を防止したい場合、以下のコマンドでインスタンスを常時起動（`min-instances: 1`）させることができます。
+
+```bash
+# インスタンスをウォームアップ状態にするコマンド
+gcloud run services update gemini-analysis-api --min-instances 1 --region asia-northeast1
+
+```
