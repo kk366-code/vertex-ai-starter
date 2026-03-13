@@ -494,12 +494,12 @@ function axc {
 
   ```
 
-
 ## 🚀 デプロイ (Google Cloud Run)
 
 本プロジェクトは、スケーラビリティとコスト効率を両立するため、Google Cloud Run（サーバーレス）へのデプロイを前提としています。
 
 ### 🏗️ インフラ構成
+
 - **Runtime**: Python 3.14 (Docker)
 - **Deployment**: Google Cloud Run
 - **CI/CD**: GitHub + Cloud Build (推奨)
@@ -556,3 +556,16 @@ gcloud run deploy gemini-analysis-api \
  ~~Google Cloud Build で `uv` のキャッシュマウント機能を利用するため、ビルド時に **BuildKit** を有効にする必要があります。デプロイコマンドを実行する際は、必ず `--set-build-env-vars DOCKER_BUILDKIT=1` フラグを含めてください。~~
 
 当初は uv のキャッシュマウント機能（BuildKit）を利用してビルド時間の短縮を図っていましたが、Cloud Build 環境での互換性を重視し、現在は標準的なマルチステージビルド構成を採用しています。これにより、特定のビルド環境に依存せず、安定したデプロイが可能です。
+
+### 📈 運用の工夫（スケーリングとコスト最適化）
+
+本プロジェクトでは Google Cloud Run のサーバーレス特性を活かし、以下の運用ルールを適用しています。
+
+- **コスト最適化**: 通常時は `min-instances: 0` に設定し、リクエストがない時間帯の課金をゼロに抑えています。
+- **ユーザー体験の向上**: コールドスタートによる遅延を防止したい場合、以下のコマンドでインスタンスを常時起動（`min-instances: 1`）させることができます。
+
+```bash
+# インスタンスをウォームアップ状態にするコマンド
+gcloud run services update gemini-analysis-api --min-instances 1 --region asia-northeast1
+
+```
