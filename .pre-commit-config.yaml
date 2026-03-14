@@ -1,5 +1,5 @@
 repos:
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.18.2  # 最新のバージョンを確認して適宜更新してください
+    rev: v8.30.0  # 最新のバージョンを確認して適宜更新してください
     hooks:
       - id: gitleaks
