@@ -243,6 +243,7 @@ function gdc() {
     echo "以下の git diff から、コミットメッセージの候補を3つ提案してください。"
     echo "【制約条件】"
     echo "- 1行のタイトルのみで書いてください。詳細（Body）は不要です。Bodyの提案も不要です。"
+    echo "- コピペしやすいように、コマンドはコードブロック形式で出力してください。"
     echo "- 各候補はそのままターミナルで実行できるよう git commit -m \"[メッセージ]\" の形式で出力してください。"
     echo "- メッセージ自体は英語（English）で作成してください。"
     echo "- GitHub Flow / Conventional Commits 形式（feat:, fix: 等）を使用してください。"
@@ -503,13 +504,20 @@ function axc {
 
 リポジトリのコミット履歴やソースコード内に、APIキーやパスワードなどの秘密情報が混入していないかを確認するため、`gitleaks` を導入しています。
 
-- **デプロイ前チェック**: クラウド環境（Cloud Run）へのデプロイ前に必ずスキャンを実行し、`no leaks found` であることを確認しています。
 - **実行コマンド**:
 
   ```bash
   gitleaks detect --verbose
 
   ```
+
+- **Git Pre-commit Hook**: 
+`pre-commit` フレームワークを利用し、ローカルでのコミット時に自動的にスキャンを実行します。
+APIキーや認証情報がコードに含まれている場合、コミットが自動的にブロックされます。
+
+#### 設定の有効化方法
+開発に参加する場合は、以下のコマンドでフックを有効にしてください。
+`uv run pre-commit install`
 
 ## 🚀 デプロイ (Google Cloud Run)
 
