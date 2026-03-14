@@ -243,6 +243,7 @@ function gdc() {
     echo "以下の git diff から、コミットメッセージの候補を3つ提案してください。"
     echo "【制約条件】"
     echo "- 1行のタイトルのみで書いてください。詳細（Body）は不要です。Bodyの提案も不要です。"
+    echo "- コピペしやすいように、コマンドはコードブロック形式で出力してください。"
     echo "- 各候補はそのままターミナルで実行できるよう git commit -m \"[メッセージ]\" の形式で出力してください。"
     echo "- メッセージ自体は英語（English）で作成してください。"
     echo "- GitHub Flow / Conventional Commits 形式（feat:, fix: 等）を使用してください。"
