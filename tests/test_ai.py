@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from core.ai import GeminiCore
-from core.schema import AnalysisResult
+from src.core.ai import GeminiCore
+from src.core.schema import AnalysisResult
 
 
 async def test_analyze_text_success(mocker):
