@@ -31,7 +31,11 @@ ENV/
 .env.local
 
 # --- エディタ設定 (お好みで) ---
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo

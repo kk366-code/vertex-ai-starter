@@ -54,14 +54,14 @@ curl https://sdk.cloud.google.com | bash
 `gcloud` は Python 3.10 以上を必要とします。本プロジェクトでは `uv` で管理している Python を使用することを推奨します。
 
 ```bash
-# uv で Python 3.12 をインストール
-uv python install 3.12
+# uv で Python 3.14 をインストール
+uv python install 3.14
 
 # gcloud が使用する Python を指定 (macOS/Linux)
-export CLOUDSDK_PYTHON=$(uv python find 3.12)
+export CLOUDSDK_PYTHON=$(uv python find 3.14)
 
 # Windows (PowerShell) の場合
-$env:CLOUDSDK_PYTHON = (uv python find 3.12)
+$env:CLOUDSDK_PYTHON = (uv python find 3.14)
 ```
 
 > [!TIP]
@@ -511,12 +511,14 @@ function axc {
 
   ```
 
-- **Git Pre-commit Hook**: 
+- **Git Pre-commit Hook**:
 `pre-commit` フレームワークを利用し、ローカルでのコミット時に自動的にスキャンを実行します。
 APIキーや認証情報がコードに含まれている場合、コミットが自動的にブロックされます。
 
 #### 設定の有効化方法
+
 開発に参加する場合は、以下のコマンドでフックを有効にしてください。
+
 ```bash
 uv run pre-commit install
 
