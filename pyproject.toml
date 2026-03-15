@@ -29,7 +29,7 @@ dev = [
 line-length = 100
 
 # チェック対象とするPythonのバージョン
-target-version = "py312"
+target-version = "py314"
 
 [tool.ruff.lint]
 # 有効にするルールのカテゴリを指定
