@@ -45,7 +45,8 @@ ENV/
 Thumbs.db
 
 # --- クラウドストレージにアップロードするファイルの格納場所 ---
-upload/
+upload/*
+!.gitkeep
 
 # Repomix output
 repomix-output.xml
