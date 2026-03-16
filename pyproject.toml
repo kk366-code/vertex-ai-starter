@@ -10,6 +10,7 @@ dependencies = [
     "google-cloud-storage>=3.9.0",
     "google-genai>=1.65.0",
     "python-dotenv>=1.2.1",
+    "python-multipart>=0.0.22",
     "uvicorn>=0.41.0",
 ]
 
