@@ -31,6 +31,14 @@
 - `tests/`: `pytest-mock` を使用した単体テストおよび結合テスト。
 - `upload/`: 処理対象メディアの一時保存用ディレクトリ（`.gitignore` 対象）。
 
+## 📜 FastAPI Implementation Conventions
+
+- **Dependency Injection**: `Form`, `File`, `Security`, `Depends` を使用する際は、必ず `typing.Annotated` を使用する（Ruff B008 回避と型安全のため）。
+- **File Upload & Temporary Storage**:
+  - クライアントからのファイルは一度 `upload/` 内の「一時フォルダ」に保存する。
+  - `tempfile.TemporaryDirectory(dir=Path("upload"))` を使用し、作業完了後（またはエラー時）に自動削除されるように設計する。
+  - 元ファイルを破壊・削除しないよう、パスの分離を徹底する。
+
 ## ⚠️ Important Environment Variables
 
 - `GOOGLE_CLOUD_PROJECT`: Google CloudのプロジェクトID（必須）。

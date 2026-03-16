@@ -1,5 +1,8 @@
 {
     "markdownlint.config": {
+        "MD004": {
+            "style": "dash"
+        }, // リストをハイフンに強制
         "MD033": {
             "allowed_elements": [
                 "details",
