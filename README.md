@@ -428,6 +428,38 @@ function axc() {
   echo "✅ Codebase and prompt copied to clipboard!"
 }
 
+function axp() {
+  local agent_name=$1
+  local agent_file="agents/${agent_name}.md"
+  local output_file="repomix-context.xml"
+
+  # 以前の残骸（repomix-output.xml など）があれば掃除
+  rm -f "$output_file"
+
+  echo "🔄 Packing codebase for Gemini... (Agent: ${agent_name:-None})"
+
+  {
+    # AIエンジニアとしてのアイデンティティと指示を最上部に配置
+    echo "<agent_context>"
+    if [ -n "$agent_name" ] && [ -f "$agent_file" ]; then
+      cat "$agent_file"
+      echo -e "\n---\n"
+    fi
+    echo "このプロジェクトのコードベースを渡します。特に CLAUDE.md の構造と SKILL.md の実装パターンを厳守してください。"
+    echo "</agent_context>"
+    
+    # Repomixを実行して標準出力を結合
+    npx repomix --style xml --compress --remove-comments --remove-empty-lines --output -
+  } > "$output_file"
+
+  if [ -s "$output_file" ]; then
+    echo "✅ Success! Please upload '$output_file' to Gemini."
+    # Macの場合、Finderでファイルを選択状態にするとさらに便利
+    # open -R "$output_file"
+  else
+    echo "❌ Error: Failed to generate $output_file"
+  fi
+}
 ```
 
 </details>
