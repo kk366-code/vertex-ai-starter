@@ -9,5 +9,8 @@
                 "summary"
             ]
         }
+    },
+    "files.associations": {
+        ".repomixignore": "ignore"
     }
 }
