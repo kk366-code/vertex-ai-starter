@@ -160,7 +160,10 @@ async def index(request: Request):
 
 
 @app.post("/upload", response_class=HTMLResponse)
-async def handle_upload(request: Request, file: UploadFile = File(...)):
+async def handle_upload(
+    request: Request,
+    file: Annotated[UploadFile, File(description="スマホからアップロードされた写真")],
+):
     # 1. 一時ディレクトリで安全にファイル保存
     with tempfile.TemporaryDirectory() as tmp_dir:
         local_path = Path(tmp_dir) / (file.filename or "photo.jpg")
