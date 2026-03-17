@@ -875,6 +875,20 @@ gcloud run deploy gemini-analysis-api \
     
 ```
 
+### APIキーを設定してデプロイ
+
+```bash
+# = の後に不要なスペースなどが入らないように注意
+gcloud run deploy gemini-analysis-api \
+    --source . \
+    --region asia-northeast1 \
+    --set-env-vars INTERNAL_API_KEY=設定したいAPIキー \
+    --set-env-vars GOOGLE_CLOUD_PROJECT=$(gcloud config get-value project) \
+    --set-env-vars GOOGLE_CLOUD_LOCATION=asia-northeast1
+
+
+```
+
 ### 📈 運用の工夫（スケーリングとコスト最適化）
 
 本プロジェクトでは Google Cloud Run のサーバーレス特性を活かし、以下の運用ルールを適用しています。
