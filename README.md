@@ -519,7 +519,205 @@ function axc {
 2. AI（ChatGPT, Claude, Gemini等）のチャット欄に貼り付け。
 3. これだけで、AIは最新のコードとプロジェクト固有のルールを完全に把握した状態で回答を開始します。
 
-### ディレクトリ構成 (Modular Design)
+### 💡 開発効率化：AIへのコンテキスト共有 (`axp`)
+
+AIアシスタントとの新しいチャットを開始する際、プロジェクトの全コードと規約（`CLAUDE.md`, `SKILL.md`）、さらに特定の **エージェント指示書** をパッケージ化して共有するためのコマンド `axp` (AI Context Pack) の導入を推奨します。
+
+クリップボードの容量制限（トークン制限）を回避し、Geminiのファイルアップロード機能を最大限に活用します。
+
+#### 必要なランタイムのインストール
+
+- **Node.js (LTS推奨)**: AIコンテキスト生成ツール (`repomix`) の実行に必要です。
+- [Node.js 公式サイト](https://nodejs.org/) からインストールしてください。
+
+<details>
+
+<summary>macOS (zsh) / Git Bash (.bashrc) 用の設定\<summary>
+
+`~/.zshrc`（Mac）または `~/.bashrc`（Git Bash）に以下の関数を追記してください。
+
+```bash
+function axp() {
+  local agent_name=$1
+  local agent_file="agents/${agent_name}.md"
+  local output_file="repomix-context.xml"
+
+  # 以前のファイルを掃除
+  [ -f "$output_file" ] && rm "$output_file"
+
+  echo "🔄 Packing codebase for Gemini... (Agent: ${agent_name:-None})"
+
+  {
+    echo "<agent_context>"
+    if [ -n "$agent_name" ] && [ -f "$agent_file" ]; then
+      cat "$agent_file"
+      echo -e "\n---\n"
+    fi
+    echo "このプロジェクトのコードベースを渡します。特に CLAUDE.md の構造と SKILL.md の実装パターンを厳守してください。"
+    echo "</agent_context>"
+    
+    # Repomixを実行して標準出力を結合
+    npx repomix --style xml --compress --remove-comments --remove-empty-lines --output -
+  } > "$output_file"
+
+  if [ -s "$output_file" ]; then
+    echo "✅ Success! Please upload '$output_file' to Gemini."
+    # エクスプローラー/Finderでファイルを選択状態にする
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      open -R "$output_file"
+    else
+      explorer.exe /select,$(cygpath -w "$output_file")
+    fi
+  else
+    echo "❌ Error: Failed to generate $output_file"
+    return 1
+  fi
+}
+```
+
+</details>
+
+<details>
+<summary>WSL (zsh / bash) 用の設定</summary>
+
+WSLのターミナル（Ubuntu等）で ~/.zshrc または ~/.bashrc に追記してください。
+
+```bash
+function axp() {
+  local agent_name=$1
+  local agent_file="agents/${agent_name}.md"
+  local output_file="repomix-context.xml"
+
+  # 以前の残骸を掃除
+  [ -f "$output_file" ] && rm "$output_file"
+
+  echo "🔄 Packing codebase for Gemini... (Agent: ${agent_name:-None})"
+
+  {
+    echo "<agent_context>"
+    if [ -n "$agent_name" ] && [ -f "$agent_file" ]; then
+      cat "$agent_file"
+      echo -e "\n---\n"
+    fi
+    echo "このプロジェクトのコードベースを渡します。特に CLAUDE.md の構造と SKILL.md の実装パターンを厳守してください。"
+    echo "</agent_context>"
+    
+    # Repomixを実行して標準出力を結合
+    npx repomix --style xml --compress --remove-comments --remove-empty-lines --output -
+  } > "$output_file"
+
+  if [ -s "$output_file" ]; then
+    echo "✅ Success! Please upload '$output_file' to Gemini."
+    
+    # WSLからWindowsのエクスプローラーを起動し、ファイルをハイライトする
+    # wslpath -w でLinuxパスをWindowsパスへ変換して explorer.exe に渡します
+    powershell.exe -c "explorer.exe /select,$(wslpath -w "$output_file")"
+  else
+    echo "❌ Error: Failed to generate $output_file"
+    return 1
+  fi
+}
+
+```
+
+1. WSL上で設定ファイルを開く：
+
+    ```bash
+    nano ~/.zshrc  # もしくは ~/.bashrc
+    ```
+
+2. 上記のコードを末尾に貼り付けて保存。
+3. 設定を反映：
+
+    ```bash
+    source ~/.zshrc  # もしくは ~/.bashrc
+
+</details>
+
+<details>
+<summary>PowerShell 用の設定</summary>
+
+`$PROFILE` に以下の関数を追記してください。
+
+```powershell
+function axp {
+    param (
+        [string]$AgentName
+    )
+
+    $agentFile = "agents/${AgentName}.md"
+    $outputFile = "repomix-context.xml"
+
+    # 以前の残骸を削除
+    if (Test-Path $outputFile) { Remove-Item $outputFile }
+
+    Write-Host "🔄 Packing codebase for Gemini... (Agent: $(if ($AgentName) { $AgentName } else { 'None' }))" -ForegroundColor Cyan
+
+    try {
+        # 文字化け防止のため、出力をUTF8に強制設定
+        $OutputEncoding = [System.Text.Encoding]::UTF8
+        
+        # 1. エージェント情報の構築
+        $header = "`n<agent_context>`n"
+        $footer = "このプロジェクトのコードベースを渡します。特に CLAUDE.md の構造と SKILL.md の実装パターンを厳守してください。`n</agent_context>`n"
+        
+        # ヘッダーを新規作成 (BOMなしUTF8)
+        [System.IO.File]::WriteAllLines((Join-Path $PWD $outputFile), $header, (New-Object System.Text.UTF8Encoding $false))
+
+        # エージェントファイルがあれば追記
+        if ($AgentName -and (Test-Path $agentFile)) {
+            $agentContent = Get-Content -Raw -Encoding UTF8 $agentFile
+            $agentContent += "`n---`n"
+            Add-Content -Path $outputFile -Value $agentContent -Encoding UTF8
+        }
+
+        # フッターを追記
+        Add-Content -Path $outputFile -Value $footer -Encoding UTF8
+
+        # 2. Repomixの結果を追記 (パイプラインの文字化けを防ぐため一度変数に受ける)
+        $repoOutput = npx repomix --style xml --compress --remove-comments --remove-empty-lines --output -
+        Add-Content -Path $outputFile -Value $repoOutput -Encoding UTF8
+
+        # 完了チェック
+        if ((Get-Item $outputFile).Length -gt 0) {
+            Write-Host "✅ Success! Please upload '$outputFile' to Gemini." -ForegroundColor Green
+            Start-Process explorer.exe "/select,$outputFile"
+        }
+    }
+    catch {
+        Write-Host "❌ Error: Failed to generate $outputFile" -ForegroundColor Red
+        Write-Error $_
+    }
+}
+```
+
+> ⚠️ ps1ファイルの保存時は **UTF-8 with BOM** で保存してください。
+
+</details>
+
+#### 使い方
+
+1. **エージェントの指定なし（基本）**
+
+    ```bash
+    axp
+    ```
+
+    `repomix-context.xml` が生成されます。
+
+2. **特定のエージェント（役割）を指定する場合**
+    `agents/architect.md` などを用意している場合：
+
+    ```bash
+    axp architect
+    ```
+
+    指示書の指示が最優先される形でパッケージ化されます。
+
+3. **Geminiへアップロード**
+    コマンド実行後に自動で開くエクスプローラーから、`repomix-context.xml` を Gemini のチャット欄にドラッグ＆ドロップしてください。
+
+### ディレクトリ構成
 
 将来的な機能拡張（動画解析、BI連携など）に柔軟に対応できるよう、役割ごとにディレクトリを分離しています。
 
