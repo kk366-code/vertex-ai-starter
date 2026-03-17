@@ -532,8 +532,7 @@ AIアシスタントとの新しいチャットを開始する際、プロジェ
 
 <details>
 
-<summary>macOS (zsh) / Git Bash (.bashrc) 用の設定<summary>
-
+<summary>macOS (zsh) / Git Bash (.bashrc) 用の設定</summary>
 `~/.zshrc`（Mac）または `~/.bashrc`（Git Bash）に以下の関数を追記してください。
 
 ```bash
@@ -578,6 +577,7 @@ function axp() {
 </details>
 
 <details>
+
 <summary>WSL (zsh / bash) 用の設定</summary>
 
 WSLのターミナル（Ubuntu等）で ~/.zshrc または ~/.bashrc に追記してください。
