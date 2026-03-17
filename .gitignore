@@ -51,3 +51,4 @@ upload/*
 # Repomix output
 repomix-output.xml
 repomix-output.txt
+repomix-context.xml
