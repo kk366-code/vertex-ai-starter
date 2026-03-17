@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import Annotated
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, HTTPException, Security, UploadFile, status
+from fastapi import FastAPI, File, Form, HTTPException, Request, Security, UploadFile, status
+from fastapi.responses import HTMLResponse
 from fastapi.security.api_key import APIKeyHeader
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from src.core.ai import GeminiCore
@@ -14,6 +16,8 @@ from src.core.schema import AnalysisResult
 from src.core.storage import CloudStorageManager
 
 app = FastAPI(title="Gemini AI Analysis API")
+BASE_DIR = Path(__file__).resolve().parent
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 # --- 認証設定 ---
 load_dotenv()
@@ -148,3 +152,42 @@ async def analyze_uploaded_media(
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.post("/upload", response_class=HTMLResponse)
+async def handle_upload(
+    request: Request,
+    file: Annotated[UploadFile, File(description="スマホからアップロードされた写真")],
+):
+    # 1. 一時ディレクトリで安全にファイル保存
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        local_path = Path(tmp_dir) / (file.filename or "photo.jpg")
+        with local_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # 2. GCSへアップロード & Geminiで解析
+        storage = CloudStorageManager()
+        gcs_uri = await storage.upload_file_async(str(local_path))
+
+        result = await ai_core.analyze_image(
+            prompt="この写真に何が写っているか、スマホユーザー向けに短く教えて。",
+            gcs_uri=gcs_uri,
+            response_schema=AnalysisResult,
+            mime_type=file.content_type or "image/jpeg",
+        )
+
+    if not result:
+        return "<p class='text-red-500'>解析に失敗しました。</p>"
+
+    # 3. htmxに返すHTML断片（ページ全体ではなくここだけが更新される）
+    return f"""
+    <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+        <h2 class="font-bold text-green-800 mb-1">解析結果</h2>
+        <p class="text-gray-700">{result.description}</p>
+    </div>
+    """
