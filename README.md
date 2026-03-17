@@ -886,6 +886,16 @@ gcloud run deploy gemini-analysis-api \
     --set-env-vars GOOGLE_CLOUD_PROJECT=$(gcloud config get-value project) \
     --set-env-vars GOOGLE_CLOUD_LOCATION=asia-northeast1
 
+```
+
+### デプロイ済みコンテナの設定を一部だけ変更する
+
+```bash
+gcloud run deploy gemini-analysis-api \
+    --image デプロイ済みコンテナのイメージのURL \
+    --region asia-northeast1 \
+    --max-instances 1 \
+    --min-instances 0
 
 ```
 
