@@ -1,0 +1,12 @@
+agents/
+
+# キャッシュディレクトリ
+.cache/
+tmp/
+
+# ビルド出力
+dist/
+build/
+
+# ログ
+*.log
