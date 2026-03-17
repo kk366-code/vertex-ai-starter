@@ -532,7 +532,7 @@ AIアシスタントとの新しいチャットを開始する際、プロジェ
 
 <details>
 
-<summary>macOS (zsh) / Git Bash (.bashrc) 用の設定\<summary>
+<summary>macOS (zsh) / Git Bash (.bashrc) 用の設定<summary>
 
 `~/.zshrc`（Mac）または `~/.bashrc`（Git Bash）に以下の関数を追記してください。
 
