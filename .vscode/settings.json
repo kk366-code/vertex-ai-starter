@@ -11,6 +11,7 @@
         }
     },
     "files.associations": {
-        ".repomixignore": "ignore"
+        ".repomixignore": "ignore",
+        ".gcloudignore": "ignore"
     }
 }

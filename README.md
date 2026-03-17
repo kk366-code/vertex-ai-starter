@@ -855,6 +855,26 @@ gcloud run deploy gemini-analysis-api \
 
 当初は uv のキャッシュマウント機能（BuildKit）を利用してビルド時間の短縮を図っていましたが、Cloud Build 環境での互換性を重視し、現在は標準的なマルチステージビルド構成を採用しています。これにより、特定のビルド環境に依存せず、安定したデプロイが可能です。
 
+### 新しいPCでデプロイする場合
+
+```bash
+# 1. ブラウザが起動するので、前回と同じアカウントでログイン
+gcloud auth login
+
+# 2. プロジェクト一覧を確認し、対象のプロジェクトIDをコピー
+gcloud projects list
+
+# 3. デプロイ先のプロジェクトを固定
+gcloud config set project [YOUR_PROJECT_ID]
+
+# 4. デプロイ
+gcloud run deploy gemini-analysis-api \
+    --source . \
+    --region asia-northeast1 \
+    --set-env-vars GOOGLE_CLOUD_PROJECT=$(gcloud config get-value project),GOOGLE_CLOUD_LOCATION=asia-northeast1
+    
+```
+
 ### 📈 運用の工夫（スケーリングとコスト最適化）
 
 本プロジェクトでは Google Cloud Run のサーバーレス特性を活かし、以下の運用ルールを適用しています。

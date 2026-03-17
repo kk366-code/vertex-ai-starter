@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI写真解析</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-50 min-h-screen p-4 flex flex-col items-center">
+    <div class="max-w-md w-full bg-white shadow-xl rounded-2xl p-6 mt-10">
+        <h1 class="text-xl font-bold mb-6 text-center">📸 スマホ写真解析</h1>
+
+        <form hx-post="/upload" hx-encoding="multipart/form-data" hx-target="#result" hx-indicator="#loading">
+
+            <div class="mb-6 text-center">
+                <input type="file" name="file" accept="image/*" capture="environment"
+                    class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                <p class="text-xs text-slate-400 mt-2">※カメラが起動するか、写真ライブラリが開きます</p>
+            </div>
+
+            <button type="submit"
+                class="w-full py-3 px-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 active:scale-95 transition-all">
+                解析を実行
+            </button>
+        </form>
+
+        <div id="loading" class="htmx-indicator mt-4 text-center text-blue-600 font-bold animate-pulse">
+            Geminiが解析中...
+        </div>
+
+        <div id="result" class="mt-6"></div>
+    </div>
+</body>
+
+</html>

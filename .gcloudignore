@@ -1,0 +1,33 @@
+# Gitの管理対象外をベースにする
+.gitignore
+
+# Google Cloud 設定ファイル
+.gcloudignore
+
+# Python 関連（ローカル環境をアップロードしない）
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE 設定
+.vscode/
+.idea/
+
+# 一時ファイル（SKILL.md の規約に基づく一時フォルダ）
+upload/
+tmp/
+temp/
+
+# 秘密情報（もしローカルにあれば）
+.env
+keys/
+*.json
+!service-account.json # 必要な場合のみ除外を解除
+
+# その他
+.DS_Store
+.git
+.github
