@@ -839,13 +839,18 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 ### 3. デプロイの実行
 
 uv を使用した Docker ビルドを行い、Cloud Run へデプロイします。
+初回デプロイ時は、サービス名 と バケット名 を任意のものに書き換えて実行してください。
 
 ```bash
-gcloud run deploy gemini-analysis-api \
+SERVICE_NAME=サービス名 # 変更してください
+BUCKET_NAME=バケット名  # 変更してください
+
+gcloud run deploy $SERVICE_NAME \
     --source . \
     --region asia-northeast1 \
     --allow-unauthenticated \
-    --set-env-vars GOOGLE_CLOUD_PROJECT=$(gcloud config get-value project),GOOGLE_CLOUD_LOCATION=asia-northeast1
+    --set-env-vars GOOGLE_CLOUD_PROJECT=$(gcloud config get-value project), \ GOOGLE_CLOUD_LOCATION=asia-northeast1, \
+    GCS_BUCKET_NAME=$BUCKET_NAME
 
 ```
 
@@ -867,32 +872,26 @@ gcloud projects list
 # 3. デプロイ先のプロジェクトを固定
 gcloud config set project [YOUR_PROJECT_ID]
 
-# 4. デプロイ
-gcloud run deploy gemini-analysis-api \
-    --source . \
-    --region asia-northeast1 \
-    --set-env-vars GOOGLE_CLOUD_PROJECT=$(gcloud config get-value project),GOOGLE_CLOUD_LOCATION=asia-northeast1
+# 上記「3. デプロイの実行」へ
     
 ```
 
 ### APIキーを設定してデプロイ
 
+既存の設定を維持したまま、特定の環境変数を更新するには --update-env-vars を使用します。
+
 ```bash
 # = の後に不要なスペースなどが入らないように注意
-gcloud run deploy gemini-analysis-api \
-    --source . \
+gcloud run services update $SERVICE_NAME \
     --region asia-northeast1 \
-    --set-env-vars INTERNAL_API_KEY=設定したいAPIキー \
-    --set-env-vars GOOGLE_CLOUD_PROJECT=$(gcloud config get-value project) \
-    --set-env-vars GOOGLE_CLOUD_LOCATION=asia-northeast1
+    --update-env-vars INTERNAL_API_KEY=設定したいAPIキー
 
 ```
 
 ### デプロイ済みコンテナの設定を一部だけ変更する
 
 ```bash
-gcloud run deploy gemini-analysis-api \
-    --image デプロイ済みコンテナのイメージのURL \
+gcloud run services update $SERVICE_NAME \
     --region asia-northeast1 \
     --max-instances 1 \
     --min-instances 0
