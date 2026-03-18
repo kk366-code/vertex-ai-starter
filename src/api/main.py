@@ -1,6 +1,8 @@
 import os
 import shutil
 import tempfile
+import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -164,30 +166,63 @@ async def handle_upload(
     request: Request,
     file: Annotated[UploadFile, File(description="スマホからアップロードされた写真")],
 ):
+    # 元の拡張子を取得し、20260318_1530_a1b2c3d4.jpg のような形式にする
+    raw_filename = file.filename or "image.jpg"
+    file_ext = os.path.splitext(raw_filename)[1].lower() or ".jpg"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = uuid.uuid4().hex[:8]
+    unique_filename = f"{timestamp}_{unique_id}{file_ext}"
+
     # 1. 一時ディレクトリで安全にファイル保存
+    # Cloud Runのメモリ(/tmp)を節約するため、使い終わったら即座に消える設定
     with tempfile.TemporaryDirectory() as tmp_dir:
-        local_path = Path(tmp_dir) / (file.filename or "photo.jpg")
+        # ローカル保存時も、生成したユニーク名を使用する
+        local_path = Path(tmp_dir) / unique_filename
+
+        # 受信データを一時ファイルに書き出す
         with local_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # 2. GCSへアップロード & Geminiで解析
-        storage = CloudStorageManager()
-        gcs_uri = await storage.upload_file_async(str(local_path))
+        # デバッグ用：受信サイズをログ出力（フロントの圧縮効果を確認）
+        file_size_mb = local_path.stat().st_size / (1024 * 1024)
+        print(f"DEBUG: Received {unique_filename} ({file_size_mb:.2f} MB)")
 
-        result = await ai_core.analyze_image(
-            prompt="この写真に何が写っているか、スマホユーザー向けに短く教えて。",
-            gcs_uri=gcs_uri,
-            response_schema=AnalysisResult,
-            mime_type=file.content_type or "image/jpeg",
-        )
+        try:
+            # GCSへアップロード
+            storage = CloudStorageManager()
 
-    if not result:
-        return "<p class='text-red-500'>解析に失敗しました。</p>"
+            # ここで unique な名前で保存されることが保証される
+            gcs_uri = await storage.upload_file_async(str(local_path))
 
-    # 3. htmxに返すHTML断片（ページ全体ではなくここだけが更新される）
-    return f"""
-    <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
-        <h2 class="font-bold text-green-800 mb-1">解析結果</h2>
-        <p class="text-gray-700">{result.description}</p>
-    </div>
-    """
+            # Gemini で解析
+            result = await ai_core.analyze_image(
+                prompt="この写真に何が写っているか、スマホユーザー向けに短く教えて。",
+                gcs_uri=gcs_uri,
+                response_schema=AnalysisResult,
+                mime_type=file.content_type or "image/jpeg",
+            )
+
+            if not result:
+                return "<p class='text-red-500'>解析に失敗しました。</p>"
+
+            # htmxに返すHTML断片（ページ全体ではなくここだけが更新される）
+            # TODO: サーバー側で決めたファイル名やサイズを返したほうがいい？
+            return f"""
+            <div class="p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm">
+                <h2 class="font-bold text-green-800 mb-1">解析成功</h2>
+                <p class="text-sm text-gray-500 mb-2">
+                    保存名: {unique_filename} ({file_size_mb:.2f} MB)
+                </p>
+                <hr class="my-2 border-green-100">
+                <p class="text-gray-700 leading-relaxed">{result.description}</p>
+            </div>
+            """
+
+        except Exception as e:
+            print(f"ERROR: {e}")
+            return f"""
+            <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p class="text-red-600 font-bold">解析中にエラーが発生しました</p>
+                <p class="text-xs text-red-400">{str(e)}</p>
+            </div>
+            """
