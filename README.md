@@ -819,27 +819,48 @@ gcloud services enable run.googleapis.com \
 
 Cloud Run から Vertex AI を呼び出すために、実行サービスアカウントに権限を付与します。
 
+#### 🐧 Linux / macOS (bash, zsh)
+
 ```bash
 # プロジェクト情報の取得
 PROJECT_ID=$(gcloud config get-value project)
 PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+SERVICE_ACCOUNT="$PROJECT_NUMBER-compute@developer.gserviceaccount.com"
 
 # Vertex AI ユーザー権限の付与
 gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+    --member="serviceAccount:$SERVICE_ACCOUNT" \
     --role="roles/aiplatform.user"
 
 # GCS 操作権限の付与（画像解析を利用する場合）
 gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+    --member="serviceAccount:$SERVICE_ACCOUNT" \
     --role="roles/storage.objectUser"
 
 ```
+
+#### 🪟 Windows (PowerShell)
+
+```powershell
+# プロジェクト情報の取得
+$PROJECT_ID = gcloud config get-value project
+$PROJECT_NUMBER = gcloud projects describe $PROJECT_ID --format='value(projectNumber)'
+$SERVICE_ACCOUNT = "$PROJECT_NUMBER-compute@developer.gserviceaccount.com"
+
+# 権限の付与
+gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT" --role="roles/aiplatform.user"
+gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT" --role="roles/storage.objectUser"
+
+```
+
+---
 
 ### 3. デプロイの実行
 
 uv を使用した Docker ビルドを行い、Cloud Run へデプロイします。
 初回デプロイ時は、サービス名 と バケット名 を任意のものに書き換えて実行してください。
+
+#### 🐧 Linux / macOS (bash, zsh) の場合
 
 ```bash
 SERVICE_NAME=サービス名 # 変更してください
@@ -851,6 +872,26 @@ gcloud run deploy $SERVICE_NAME \
     --allow-unauthenticated \
     --set-env-vars GOOGLE_CLOUD_PROJECT=$(gcloud config get-value project), \ GOOGLE_CLOUD_LOCATION=asia-northeast1, \
     GCS_BUCKET_NAME=$BUCKET_NAME
+
+```
+
+#### 🪟 PowerShell の場合
+
+```powershell
+# 設定変数
+$PROJECT_ID = gcloud config get-value project
+$SERVICE_NAME = "サービス名"
+$BUCKET_NAME = "バケット名"
+
+# デプロイ実行
+gcloud run deploy $SERVICE_NAME `
+    --source . `
+    --region asia-northeast1 `
+    --allow-unauthenticated `
+    --set-env-vars `
+"GOOGLE_CLOUD_PROJECT=$PROJECT_ID,`
+GOOGLE_CLOUD_LOCATION=asia-northeast1,`
+GCS_BUCKET_NAME=$BUCKET_NAME"
 
 ```
 
@@ -880,6 +921,8 @@ gcloud config set project [YOUR_PROJECT_ID]
 
 既存の設定を維持したまま、特定の環境変数を更新するには --update-env-vars を使用します。
 
+**🐧 bash/zsh:**
+
 ```bash
 # = の後に不要なスペースなどが入らないように注意
 gcloud run services update $SERVICE_NAME \
@@ -888,12 +931,33 @@ gcloud run services update $SERVICE_NAME \
 
 ```
 
+**🪟 PowerShell:**
+
+```powershell
+gcloud run services update $SERVICE_NAME `
+    --region asia-northeast1 `
+    --update-env-vars INTERNAL_API_KEY=設定したいAPIキー
+
+```
+
 ### デプロイ済みコンテナの設定を一部だけ変更する
+
+**🐧 bash/zsh:**
 
 ```bash
 gcloud run services update $SERVICE_NAME \
     --region asia-northeast1 \
     --max-instances 1 \
+    --min-instances 0
+
+```
+
+**🪟 PowerShell:**
+
+```bash
+gcloud run services update $SERVICE_NAME `
+    --region asia-northeast1 `
+    --max-instances 1 `
     --min-instances 0
 
 ```
