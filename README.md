@@ -911,6 +911,26 @@ GCS_BUCKET_NAME=$BUCKET_NAME"
 
 ```
 
+#### 🟦 Git Bash (Windows) の場合
+
+Windows の Git Bash を使用している場合、パス内のスペースに起因するエラーを防ぐため、以下の手順で実行してください。
+
+```bash
+# 1. 変数の設定（サービス名とバケット名を書き換えてください）
+SERVICE_NAME="サービス名"
+BUCKET_NAME="バケット名"
+PROJECT_ID=$(gcloud config get-value project)
+
+# 2. デプロイの実行
+# ※改行時のバックスラッシュ（\）の後にスペースが入らないよう注意してください
+gcloud run deploy $SERVICE_NAME \
+    --source . \
+    --region asia-northeast1 \
+    --allow-unauthenticated \
+    --set-env-vars GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=asia-northeast1,GCS_BUCKET_NAME=$BUCKET_NAME
+
+```
+
 ### ⚠️ デプロイ時の注意点 (BuildKit)
 
  ~~Google Cloud Build で `uv` のキャッシュマウント機能を利用するため、ビルド時に **BuildKit** を有効にする必要があります。デプロイコマンドを実行する際は、必ず `--set-build-env-vars DOCKER_BUILDKIT=1` フラグを含めてください。~~
