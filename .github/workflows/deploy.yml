@@ -1,0 +1,46 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: ["main"] # mainブランチへのプッシュで発火
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    environment: development
+    permissions:
+      contents: "read"
+      id-token: "write" # Google Cloud 認証に必要
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. Google Cloud 認証 (Workload Identity 連携を推奨)
+      - id: "auth"
+        uses: "google-github-actions/auth@v2"
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      # 2. Docker の設定
+      - name: Set up Docker
+        run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev
+
+      # 3. イメージのビルドとプッシュ
+      - name: Build and Push Container
+        run: |-
+          docker build -t asia-northeast1-docker.pkg.dev/${{ secrets.GOOGLE_CLOUD_PROJECT }}/repo/app:${{ github.sha }} .
+          docker push asia-northeast1-docker.pkg.dev/${{ secrets.GOOGLE_CLOUD_PROJECT }}/repo/app:${{ github.sha }}
+
+      # 4. Cloud Run へのデプロイ (規約に従い環境変数を注入)
+      - name: Deploy to Cloud Run
+        uses: "google-github-actions/deploy-cloudrun@v2"
+        with:
+          service: "gemini-analysis-api-dev"
+          region: "asia-northeast1"
+          image: "asia-northeast1-docker.pkg.dev/${{ secrets.GOOGLE_CLOUD_PROJECT }}/repo/app:${{ github.sha }}"
+          env_vars: |-
+            GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}
+            GOOGLE_CLOUD_LOCATION=asia-northeast1
+            GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }}
+            INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}
