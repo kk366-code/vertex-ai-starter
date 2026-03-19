@@ -32,6 +32,7 @@ brew install --cask google-cloud-sdk
 
 # または インストールスクリプトを使用する場合
 curl https://sdk.cloud.google.com | bash
+
 ```
 
 #### 🐧 Linux
@@ -46,6 +47,18 @@ curl https://sdk.cloud.google.com | bash
 
 1. [Google Cloud CLI インストーラ](https://www.google.com/search?q=https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe) をダウンロードして実行します。
 2. インストール完了後、**Google Cloud SDK Shell** を管理者権限で起動します。
+
+> **⚠️Git Bash をメインで使用する場合**
+> Windows のパス（スペースを含む `Cloud SDK` など）が原因でコマンドが認識されないことがあります。以下の設定を必ず行ってください。
+>
+> ```bash
+> # .bashrc にエイリアスを追記
+> echo "alias gcloud='gcloud.cmd'" >> ~/.bashrc
+>
+> # 設定を反映
+> source \~/.bashrc
+>
+>```
 
 ---
 
