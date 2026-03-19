@@ -88,6 +88,10 @@
         class="mt-6"
       ></div>
     </div>
+    <div
+      id="toast-container"
+      class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"
+    ></div>
   </body>
 </html>
 
@@ -169,6 +173,42 @@
       container.classList.add("hidden");
     }
   }
+
+  // トーストを表示する共通関数
+  function showToast(message, type = "success") {
+    const container = document.getElementById("toast-container");
+    const toast = document.createElement("div");
+
+    // スタイル設定（成功時は緑、失敗時は赤）
+    const bgColor = type === "success" ? "bg-green-600" : "bg-red-600";
+
+    toast.className = `${bgColor} text-white px-6 py-3 rounded-lg shadow-lg transform transition-all duration-500 translate-y-10 opacity-0`;
+    toast.innerText = message;
+
+    container.appendChild(toast);
+
+    // アニメーション：表示（ちょっと遅らせて実行することでふわっと出す）
+    setTimeout(() => {
+      toast.classList.remove("translate-y-10", "opacity-0");
+    }, 100);
+
+    // 3秒後に消す
+    setTimeout(() => {
+      toast.classList.add("opacity-0", "translate-y-[-10px]");
+      setTimeout(() => toast.remove(), 500);
+    }, 3000);
+  }
+
+  // HTMXの処理が終わったタイミングでトーストを出す
+  document.body.addEventListener("htmx:afterRequest", (event) => {
+    if (event.detail.target.id === "result") {
+      if (event.detail.successful) {
+        showToast("解析が完了しました！ ✨");
+      } else {
+        showToast("エラーが発生しました。", "error");
+      }
+    }
+  });
 
   // デバイス判定ロジック
   document.addEventListener("DOMContentLoaded", () => {
