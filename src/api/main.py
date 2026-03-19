@@ -166,12 +166,19 @@ async def handle_upload(
     request: Request,
     file: Annotated[UploadFile, File(description="スマホからアップロードされた写真")],
 ):
-    # 元の拡張子を取得し、20260318_1530_a1b2c3d4.jpg のような形式にする
+    # 元の拡張子を取得し、20260318_a1b2c3d4_IMG1234.jpg のような形式にする
     raw_filename = file.filename or "image.jpg"
-    file_ext = os.path.splitext(raw_filename)[1].lower() or ".jpg"
+
+    # 拡張子を除いた「ベース名」と「拡張子」に分ける
+    file_path = Path(raw_filename)
+    base_name = file_path.stem  # 例: "my_photo"
+    file_ext = file_path.suffix.lower() or ".jpg"  # 例: ".jpg"
+
+    # タイムスタンプとUUIDを「接尾辞」として追加する
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    unique_id = uuid.uuid4().hex[:8]
-    unique_filename = f"{timestamp}_{unique_id}{file_ext}"
+    unique_id = uuid.uuid4().hex[:4]
+
+    unique_filename = f"{timestamp}_{unique_id}_{base_name}{file_ext}"
 
     # 1. 一時ディレクトリで安全にファイル保存
     # Cloud Runのメモリ(/tmp)を節約するため、使い終わったら即座に消える設定
@@ -210,9 +217,6 @@ async def handle_upload(
             return f"""
             <div class="p-4 bg-green-50 border border-green-200 rounded-lg shadow-sm">
                 <h2 class="font-bold text-green-800 mb-1">解析成功</h2>
-                <p class="text-sm text-gray-500 mb-2">
-                    保存名: {unique_filename} ({file_size_mb:.2f} MB)
-                </p>
                 <hr class="my-2 border-green-100">
                 <p class="text-gray-700 leading-relaxed">{result.description}</p>
             </div>

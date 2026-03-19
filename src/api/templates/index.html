@@ -1,252 +1,148 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
     <title>AI写真解析</title>
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-</head>
+  </head>
 
-<body class="bg-slate-50 min-h-screen p-4 flex flex-col items-center">
+  <body class="bg-slate-50 min-h-screen p-4 flex flex-col items-center">
     <div class="max-w-md mx-auto p-6">
-        <form hx-post="/upload" hx-encoding="multipart/form-data" hx-target="#result" hx-indicator="#loading"
-            id="upload-form">
+      <h1 class="text-xl font-bold mb-6 text-center">📸 スマホ写真解析</h1>
 
-            <input type="file" name="file" accept="image/*" capture="environment"
-                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+      <form
+        hx-post="/upload"
+        hx-encoding="multipart/form-data"
+        hx-target="#result"
+        hx-indicator="#loading"
+        hx-disabled-elt="button"
+        id="upload-form"
+      >
+        <input
+          type="file"
+          name="file"
+          accept="image/*"
+          capture="environment"
+          onchange="previewImage(this)"
+          class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+        />
 
-            <button type="submit" class="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg font-bold">
-                解析を実行
-            </button>
-        </form>
-
-        <div id="loading" class="htmx-indicator mt-4 text-center text-blue-600">
-            画像を圧縮・アップロード中...
+        <div
+          id="preview-container"
+          class="mt-4 hidden"
+        >
+          <p class="text-xs text-gray-400 mb-1 text-center">選択中の画像:</p>
+          <img
+            id="image-preview"
+            src=""
+            class="w-full h-auto rounded-lg shadow-md border border-gray-200"
+          />
         </div>
 
-        <div id="result" class="mt-6"></div>
+        <button
+          type="submit"
+          class="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg font-bold disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          解析を実行
+        </button>
+      </form>
+
+      <div
+        id="loading"
+        class="htmx-indicator mt-4 text-center text-blue-600"
+      >
+        画像を圧縮・アップロード中...
+      </div>
+
+      <div
+        id="result"
+        class="mt-6"
+      ></div>
     </div>
-
-    <!-- <div class="max-w-md w-full bg-white shadow-xl rounded-2xl p-6 mt-10">
-        <h1 class="text-xl font-bold mb-6 text-center">📸 スマホ写真解析</h1>
-
-        <form hx-post="/upload" hx-encoding="multipart/form-data" hx-target="#result" hx-indicator="#loading">
-
-            <div class="mb-6 text-center">
-                <input type="file" name="file" accept="image/*" capture="environment"
-                    class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                <p class="text-xs text-slate-400 mt-2">※カメラが起動するか、写真ライブラリが開きます</p>
-            </div>
-
-            <button type="submit"
-                class="w-full py-3 px-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 active:scale-95 transition-all">
-                解析を実行
-            </button>
-        </form>
-
-        <div id="loading" class="htmx-indicator mt-4 text-center text-blue-600 font-bold animate-pulse">
-            Geminiが解析中...
-        </div>
-
-        <div id="result" class="mt-6"></div>
-    </div> -->
-</body>
-
+  </body>
 </html>
 
-
-<script
-    src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.min.js"></script>
-
-<!-- <div class="max-w-md mx-auto p-6">
-    <form hx-post="/upload" hx-encoding="multipart/form-data" hx-target="#result" hx-indicator="#loading"
-        id="upload-form">
-
-        <input type="file" name="file" accept="image/*" capture="environment"
-            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-
-        <button type="submit" class="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg font-bold">
-            解析を実行
-        </button>
-    </form>
-
-    <div id="loading" class="htmx-indicator mt-4 text-center text-blue-600">
-        画像を圧縮・アップロード中...
-    </div>
-
-    <div id="result" class="mt-6"></div>
-</div> -->
+<script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.min.js"></script>
 
 <script>
-    // // htmxがリクエストを送る直前に実行されるイベント
-    // document.body.addEventListener('htmx:configRequest', async (event) => {
-    //     const fileInput = document.querySelector('input[name="file"]');
-    //     console.log("イベント発火！");
-    //     if (event.detail.target.id === 'upload-form' && fileInput.files.length > 0) {
-    //         console.log("イベント発火2！");
+  document.body.addEventListener("htmx:configRequest", async (event) => {
+    const form = event.detail.elt;
+    const fileInput = document.querySelector('input[name="file"]');
+    const hasFiles = fileInput && fileInput.files && fileInput.files.length > 0;
 
-    //         // リクエストを一時停止（Promiseを待つ）
-    //         event.preventDefault();
+    if (form.id === "upload-form" && hasFiles) {
+      const imageFile = fileInput.files[0];
 
-    //         const imageFile = fileInput.files[0];
-    //         const options = {
-    //             maxSizeMB: 0.8,          // 800KB以下に
-    //             maxWidthOrHeight: 1600, // 長辺を1600px以内に
-    //             useWebWorker: true
-    //         };
+      // 【無限ループ防止】
+      // 既に一度このスクリプトで処理（圧縮）済みの場合はスキップ
+      // 判定用のカスタム属性を付与してチェックします
+      if (fileInput.dataset.compressed === "true") {
+        delete fileInput.dataset.compressed; // 次回のためにリセット
+        return;
+      }
 
-    //         try {
-    //             console.log(`元サイズ: ${imageFile.size / 1024 / 1024} MB`);
-    //             const compressedFile = await imageCompression(imageFile, options);
-    //             console.log(`圧縮後: ${compressedFile.size / 1024 / 1024} MB`);
+      event.preventDefault(); // 元のリクエストを一時停止
 
-    //             // 元の FormData を取得し、ファイルを差し替える
-    //             const formData = event.detail.parameters;
-    //             formData.set('file', compressedFile, "resized_photo.jpg");
+      const options = {
+        maxSizeMB: 0.8,
+        maxWidthOrHeight: 1600,
+        useWebWorker: true,
+      };
 
-    //             // リクエストを再開
-    //             event.detail.issueRequest();
-    //         } catch (error) {
-    //             console.error("圧縮失敗:", error);
-    //             event.detail.issueRequest(); // 失敗した場合は元のサイズで送る
-    //         }
-    //     }
-    // });
+      try {
+        console.log(`圧縮前: ${imageFile.name} (${(imageFile.size / 1024 / 1024).toFixed(2)} MB)`);
 
-    // document.body.addEventListener('htmx:configRequest', async (event) => {
-    //     // 1. まずターゲットを確認
-    //     const target = event.detail.target;
-    //     console.log("ターゲット要素のID:", target.id);
+        const compressedBlob = await imageCompression(imageFile, options);
 
-    //     // 2. ファイル入力を取得
-    //     const fileInput = document.querySelector('input[name="file"]');
-    //     const hasFiles = fileInput && fileInput.files && fileInput.files.length > 0;
-    //     console.log("ファイルが選択されているか:", hasFiles);
+        // 1. 新しい File オブジェクトを作成
+        // 第2引数に imageFile.name を渡すことで、元のファイル名をバックエンドに送ります
+        const resizedFile = new File([compressedBlob], imageFile.name, {
+          type: imageFile.type,
+          lastModified: Date.now(),
+        });
 
-    //     // 条件を「IDが一致する、かつ、ファイルがある」場合に限定
-    //     if (target.id === 'upload-form' && hasFiles) {
-    //         console.log("イベント発火2！圧縮処理を開始します。");
+        // 2. input の内容を差し替え
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(resizedFile);
+        fileInput.files = dataTransfer.files;
 
-    //         // 念のため、二重送信を防ぐための preventDefault
-    //         event.preventDefault();
+        // 3. 再送信フラグを立てて実行
+        fileInput.dataset.compressed = "true";
+        htmx.trigger(form, "submit");
 
-    //         const imageFile = fileInput.files[0];
-    //         const options = {
-    //             maxSizeMB: 0.8,
-    //             maxWidthOrHeight: 1600,
-    //             useWebWorker: true
-    //         };
+        console.log(
+          `圧縮後: ${resizedFile.name} (${(resizedFile.size / 1024 / 1024).toFixed(2)} MB)`,
+        );
+      } catch (error) {
+        console.error("圧縮失敗:", error);
+        fileInput.dataset.compressed = "true";
+        htmx.trigger(form, "submit");
+      }
+    }
+  });
 
-    //         try {
-    //             console.log(`元サイズ: ${(imageFile.size / 1024 / 1024).toFixed(2)} MB`);
+  function previewImage(input) {
+    const container = document.getElementById("preview-container");
+    const preview = document.getElementById("image-preview");
 
-    //             // 圧縮実行
-    //             const compressedFile = await imageCompression(imageFile, options);
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
 
-    //             console.log(`圧縮完了: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
+      reader.onload = function (e) {
+        // 画像のデータURLをセットして表示
+        preview.src = e.target.result;
+        container.classList.remove("hidden"); // hiddenクラスを取って表示
+      };
 
-    //             // htmxのパラメータを書き換え
-    //             // event.detail.parameters は FormData オブジェクトです
-    //             event.detail.parameters.set('file', compressedFile, "resized_photo.jpg");
-
-    //             // リクエストを手動で実行
-    //             event.detail.issueRequest();
-    //             console.log("圧縮済みリクエストを送信しました。");
-    //         } catch (error) {
-    //             console.error("圧縮中にエラーが発生しました:", error);
-    //             event.detail.issueRequest();
-    //         }
-    //     } else {
-    //         console.log("条件に一致しないため、圧縮をスキップしました。");
-    //     }
-    // });
-
-    // document.body.addEventListener('htmx:configRequest', async (event) => {
-    //     // リクエストを発行した要素（form自身）を取得
-    //     const form = event.detail.elt;
-    //     console.log("リクエスト発行元のID:", form.id);
-
-    //     const fileInput = document.querySelector('input[name="file"]');
-    //     const hasFiles = fileInput && fileInput.files && fileInput.files.length > 0;
-
-    //     // IDの判定を elt.id に変更
-    //     if (form.id === 'upload-form' && hasFiles) {
-    //         console.log("イベント発火2！圧縮を開始します。");
-
-    //         // --- 以前の圧縮ロジックと同じ ---
-    //         event.preventDefault(); // 一旦止める
-
-    //         const imageFile = fileInput.files[0];
-    //         const options = {
-    //             maxSizeMB: 0.8,
-    //             maxWidthOrHeight: 1600,
-    //             useWebWorker: true
-    //         };
-
-    //         try {
-    //             const compressedFile = await imageCompression(imageFile, options);
-    //             console.log(`圧縮完了: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
-
-    //             // FormDataにセット
-    //             event.detail.parameters.set('file', compressedFile, "resized_photo.jpg");
-
-    //             // リクエスト再開
-    //             event.detail.issueRequest();
-    //         } catch (error) {
-    //             console.error("圧縮失敗:", error);
-    //             event.detail.issueRequest();
-    //         }
-    //     }
-    // });
-
-    document.body.addEventListener('htmx:configRequest', async (event) => {
-        const form = event.detail.elt;
-        const fileInput = document.querySelector('input[name="file"]');
-        const hasFiles = fileInput && fileInput.files && fileInput.files.length > 0;
-
-        // フォームIDのチェック（elt を使用）
-        if (form.id === 'upload-form' && hasFiles) {
-            console.log("イベント発火2！圧縮を開始します。");
-
-            // 【重要】htmx 1.x でリクエストを一時停止する正しい方法
-            // async/await を使う場合、一旦イベントをキャンセルし、
-            // 圧縮後に改めて htmx.trigger でリクエストを叩き直すのが確実です。
-
-            const imageFile = fileInput.files[0];
-
-            // すでに圧縮済みのファイルならスキップ（無限ループ防止）
-            if (imageFile.name === "resized_photo.jpg") return;
-
-            event.preventDefault(); // 元のリクエストを止める
-
-            const options = {
-                maxSizeMB: 0.8,
-                maxWidthOrHeight: 1600,
-                useWebWorker: true
-            };
-
-            try {
-                console.log(`元サイズ: ${(imageFile.size / 1024 / 1024).toFixed(2)} MB`);
-                const compressedFile = await imageCompression(imageFile, options);
-                console.log(`圧縮完了: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
-
-                // 1. inputの中身を圧縮後のファイルに物理的に差し替える
-                const dataTransfer = new DataTransfer();
-                const newFile = new File([compressedFile], "resized_photo.jpg", { type: compressedFile.type });
-                dataTransfer.items.add(newFile);
-                fileInput.files = dataTransfer.files;
-
-                // 2. フォームを再送信する
-                // この時、上の resized_photo.jpg 判定で無限ループを防ぐ
-                htmx.trigger(form, 'submit');
-
-            } catch (error) {
-                console.error("圧縮失敗:", error);
-                // 失敗した場合はそのまま送る
-                htmx.trigger(form, 'submit');
-            }
-        }
-    });
+      reader.readAsDataURL(input.files[0]);
+    } else {
+      // ファイルが選択解除されたら隠す
+      container.classList.add("hidden");
+    }
+  }
 </script>

@@ -32,6 +32,7 @@ brew install --cask google-cloud-sdk
 
 # または インストールスクリプトを使用する場合
 curl https://sdk.cloud.google.com | bash
+
 ```
 
 #### 🐧 Linux
@@ -46,6 +47,18 @@ curl https://sdk.cloud.google.com | bash
 
 1. [Google Cloud CLI インストーラ](https://www.google.com/search?q=https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe) をダウンロードして実行します。
 2. インストール完了後、**Google Cloud SDK Shell** を管理者権限で起動します。
+
+> **⚠️Git Bash をメインで使用する場合**
+> Windows のパス（スペースを含む `Cloud SDK` など）が原因でコマンドが認識されないことがあります。以下の設定を必ず行ってください。
+>
+> ```bash
+> # .bashrc にエイリアスを追記
+> echo "alias gcloud='gcloud.cmd'" >> ~/.bashrc
+>
+> # 設定を反映
+> source \~/.bashrc
+>
+>```
 
 ---
 
@@ -895,6 +908,26 @@ gcloud run deploy $SERVICE_NAME `
 "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,`
 GOOGLE_CLOUD_LOCATION=asia-northeast1,`
 GCS_BUCKET_NAME=$BUCKET_NAME"
+
+```
+
+#### 🟦 Git Bash (Windows) の場合
+
+Windows の Git Bash を使用している場合、パス内のスペースに起因するエラーを防ぐため、以下の手順で実行してください。
+
+```bash
+# 1. 変数の設定（サービス名とバケット名を書き換えてください）
+SERVICE_NAME="サービス名"
+BUCKET_NAME="バケット名"
+PROJECT_ID=$(gcloud config get-value project)
+
+# 2. デプロイの実行
+# ※改行時のバックスラッシュ（\）の後にスペースが入らないよう注意してください
+gcloud run deploy $SERVICE_NAME \
+    --source . \
+    --region asia-northeast1 \
+    --allow-unauthenticated \
+    --set-env-vars GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=asia-northeast1,GCS_BUCKET_NAME=$BUCKET_NAME
 
 ```
 

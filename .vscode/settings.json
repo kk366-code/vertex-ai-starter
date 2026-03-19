@@ -1,17 +1,34 @@
 {
-    "markdownlint.config": {
-        "MD004": {
-            "style": "dash"
-        }, // リストをハイフンに強制
-        "MD033": {
-            "allowed_elements": [
-                "details",
-                "summary"
-            ]
-        }
-    },
-    "files.associations": {
-        ".repomixignore": "ignore",
-        ".gcloudignore": "ignore"
+  "editor.formatOnSave": true,
+  "markdownlint.config": {
+    "MD004": {
+      "style": "dash"
+    }, // リストをハイフンに強制
+    "MD033": {
+      "allowed_elements": ["details", "summary"]
     }
+  },
+  "files.associations": {
+    ".repomixignore": "ignore",
+    ".gcloudignore": "ignore"
+  },
+  "emmet.includeLanguages": {
+    "htmx": "html"
+  },
+  // --- HTML / JS / CSS 用 (htmx含む) ---
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  // --- Python 専用 (Ruffを指定) ---
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff", 
+    "editor.codeActionsOnSave": {
+      // 保存時にインポートの整理と自動修正を実行
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  }
 }
