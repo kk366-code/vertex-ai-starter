@@ -28,8 +28,21 @@
           name="file"
           accept="image/*"
           capture="environment"
+          onchange="previewImage(this)"
           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
         />
+
+        <div
+          id="preview-container"
+          class="mt-4 hidden"
+        >
+          <p class="text-xs text-gray-400 mb-1 text-center">選択中の画像:</p>
+          <img
+            id="image-preview"
+            src=""
+            class="w-full h-auto rounded-lg shadow-md border border-gray-200"
+          />
+        </div>
 
         <button
           type="submit"
@@ -112,4 +125,24 @@
       }
     }
   });
+
+  function previewImage(input) {
+    const container = document.getElementById("preview-container");
+    const preview = document.getElementById("image-preview");
+
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+
+      reader.onload = function (e) {
+        // 画像のデータURLをセットして表示
+        preview.src = e.target.result;
+        container.classList.remove("hidden"); // hiddenクラスを取って表示
+      };
+
+      reader.readAsDataURL(input.files[0]);
+    } else {
+      // ファイルが選択解除されたら隠す
+      container.classList.add("hidden");
+    }
+  }
 </script>
