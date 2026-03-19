@@ -13,7 +13,7 @@
 
   <body class="bg-slate-50 min-h-screen p-4 flex flex-col items-center">
     <div class="max-w-md mx-auto p-6">
-      <h1 class="text-xl font-bold mb-6 text-center">📸 スマホ写真解析</h1>
+      <h1 class="text-xl font-bold mb-6 text-center">📸 写真解析</h1>
 
       <form
         hx-post="/upload"
@@ -23,13 +23,37 @@
         hx-disabled-elt="button"
         id="upload-form"
       >
+        <label
+          for="file-input"
+          class="flex flex-col items-center justify-center w-full p-8 border-4 border-dashed border-blue-200 rounded-2xl bg-white hover:bg-blue-50 cursor-pointer transition-all active:scale-95 shadow-inner"
+        >
+          <div
+            class="text-5xl mb-3"
+            id="upload-icon"
+          >
+            📸
+          </div>
+          <span
+            class="text-xl text-blue-800 font-bold"
+            id="upload-text"
+          >
+            写真を撮って解析
+          </span>
+          <p
+            class="text-xs text-blue-400 mt-2"
+            id="upload-desc"
+          >
+            スマホならカメラが起動します
+          </p>
+        </label>
+
         <input
           type="file"
           name="file"
+          id="file-input"
           accept="image/*"
-          capture="environment"
           onchange="previewImage(this)"
-          class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+          class="sr-only"
         />
 
         <div
@@ -145,4 +169,29 @@
       container.classList.add("hidden");
     }
   }
+
+  // デバイス判定ロジック
+  document.addEventListener("DOMContentLoaded", () => {
+    const fileInput = document.getElementById("file-input");
+    const uploadIcon = document.getElementById("upload-icon");
+    const uploadText = document.getElementById("upload-text");
+    const uploadDesc = document.getElementById("upload-desc");
+
+    // モバイル判定
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      // スマホ向け設定
+      fileInput.setAttribute("capture", "environment");
+      uploadIcon.innerText = "📸";
+      uploadText.innerText = "写真を撮って解析";
+      uploadDesc.innerText = "カメラが起動します";
+    } else {
+      // PC向け設定
+      fileInput.removeAttribute("capture");
+      uploadIcon.innerText = "📁";
+      uploadText.innerText = "画像を選択して解析";
+      uploadDesc.innerText = "クリックしてファイルを選択";
+    }
+  });
 </script>
