@@ -1,4 +1,20 @@
+# 「コードのロジックだけを修正してほしい」時はこれらを除外
+# agents/
+README.md
+# SKILL.md
+# CLAUDE.md
+
+# 過去の出力結果
+repomix-output.xml
+repomix-output.txt
+repomix-context.xml
+
+# エージェント
 agents/
+
+# 依存ライブラリの厳密なバージョンをLLMに教える必要がない場合は除外
+# これだけで数千行の節約
+uv.lock
 
 # キャッシュディレクトリ
 .cache/
