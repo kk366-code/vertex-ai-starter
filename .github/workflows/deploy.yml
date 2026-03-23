@@ -4,6 +4,10 @@ on:
   push:
     branches: ["main"] # mainブランチへのプッシュで発火
 
+env:
+  # ワークフロー全体で Node.js 24 を強制
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   deploy-dev:
     runs-on: ubuntu-latest
