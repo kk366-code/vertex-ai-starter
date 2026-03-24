@@ -998,6 +998,36 @@ gcloud run services update $SERVICE_NAME `
 
 ```
 
+### CI/CD (GitHub Actions) による自動デプロイ
+
+`main` ブランチへマージされると、GitHub Actions により自動的にビルド・プッシュ・デプロイが実行されます。
+
+#### 事前準備: Artifact Registry の作成
+
+初回のみ、イメージを保管するリポジトリを手動で作成する必要があります。
+
+```bash
+gcloud artifacts repositories create repo \
+    --repository-format=docker \
+    --location=asia-northeast1 \
+    --description="Docker repository for app"
+```
+
+#### GitHub Secrets の設定
+
+リポジトリの `Settings > Secrets and variables > Actions` に以下の値を登録してください。
+
+| Secret 名 | 内容 |
+| :--- | :--- |
+| `GCP_PROJECT_ID` | Google Cloud プロジェクト ID |
+| `GCP_SERVICE_ACCOUNT` | デプロイ用サービスアカウントのメールアドレス |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity プロバイダーのパス |
+| `GCS_BUCKET_NAME` | 解析ファイルを保存する GCS バケット名 |
+| `INTERNAL_API_KEY` | アプリケーション独自の API キー |
+
+> [!IMPORTANT]
+> **Workload Identity 連携** を使用するため、サービスアカウントには `roles/iam.workloadIdentityUser` の権限付与が必要です。詳細はプロジェクト管理者に確認してください。
+
 ### 📈 運用の工夫（スケーリングとコスト最適化）
 
 本プロジェクトでは Google Cloud Run のサーバーレス特性を活かし、以下の運用ルールを適用しています。
