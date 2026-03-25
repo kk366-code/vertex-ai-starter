@@ -121,6 +121,7 @@ class GeminiCore:
         return response_schema.model_validate_json(response.text)
 
 
+# TODO: 不要であることを確認したらGeminiManagerは削除
 class GeminiManager:
     def __init__(self):
         self.project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
