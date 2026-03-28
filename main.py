@@ -1,33 +1,21 @@
 import asyncio
-import os
-
-from dotenv import load_dotenv
 
 from src.core.ai import GeminiCore
+from src.core.config import settings
 from src.core.schema import AnalysisResult
 from src.core.storage import CloudStorageManager
 
-load_dotenv()
-PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
-if PROJECT_ID is None:
-    raise ValueError("環境変数 'GOOGLE_CLOUD_PROJECT' が指定されていません")
-
-LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")  # デフォルト値を設定可能
-
 
 async def main():
-    # 1. 環境変数の準備
-    project_id = PROJECT_ID
-    if project_id is None:
-        raise ValueError("環境変数 'GOOGLE_CLOUD_PROJECT' が指定されていません")
 
-    location = LOCATION
-
-    print(f"🚀 AI基盤 起動テスト (Project: {project_id})")
+    print(f"🚀 AI基盤 起動テスト (Project: {settings.google_cloud_project})")
 
     try:
         # 2. クラスのインスタンス化
-        core = GeminiCore(project_id=project_id, location=location)
+        core = GeminiCore(
+            project_id=settings.google_cloud_project,
+            location=settings.google_cloud_location,
+        )
 
         # 3. プロンプト（Pydanticを使う場合、JSONの書き方の指示は不要）
         # Geminiはresponse_schemaを見て自動的に構造を理解する
@@ -43,7 +31,7 @@ async def main():
 
         # TODO: ここも非同期化する場合は await をつける
         print("📤 画像をアップロード中...")
-        gcs_uri = storage.upload_file("upload/test.jpg")
+        gcs_uri = storage.upload_file("upload/test4.jpg")
 
         # 戻り値は AnalysisResult 型のインスタンスです
         result = await core.analyze_image(
