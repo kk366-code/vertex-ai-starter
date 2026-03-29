@@ -30,7 +30,8 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
     """APIキーを検証する依存関数"""
     if api_key != settings.internal_api_key:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Could not validate credentials"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Could not validate credentials",
         )
 
     return api_key
@@ -98,7 +99,7 @@ async def analyze_uploaded_media(
     upload_root = Path("upload")
     upload_root.mkdir(exist_ok=True)
 
-    # 2. 一時的なサブフォルダを作成し、スコープを抜けると自動削除される仕組み
+    # 一時的なサブフォルダを作成し、スコープを抜けると自動削除される仕組み
     # dir=upload_root を指定することで、作業が upload/ 内で完結する
     # エラーが起きても、解析が成功しても、終わった瞬間にtmp_dirフォルダごと消滅
     with tempfile.TemporaryDirectory(dir=upload_root) as tmp_dir:
@@ -116,7 +117,7 @@ async def analyze_uploaded_media(
             storage_manager = CloudStorageManager()
             gcs_uri = await storage_manager.upload_file_async(str(local_path))
 
-            # 4. Geminiで解析 (SKILL.md の非同期パターン)
+            # Geminiで解析
             # file.content_type (image/png 等) を自動取得して渡す
             result = await ai_core.analyze_image(
                 prompt=prompt,
