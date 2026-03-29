@@ -1,4 +1,3 @@
-import os
 import shutil
 import tempfile
 import uuid
@@ -6,7 +5,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
-from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, Security, UploadFile, status
 from fastapi.responses import HTMLResponse
 from fastapi.security.api_key import APIKeyHeader
@@ -14,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from src.core.ai import GeminiCore
+from src.core.config import settings
 from src.core.schema import AnalysisResult
 from src.core.storage import CloudStorageManager
 
@@ -22,37 +21,22 @@ BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 # --- 認証設定 ---
-load_dotenv()
 API_KEY_NAME = "X-API-KEY"
 # ヘッダーから X-API-KEY を探す設定
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
-# 環境変数から「正解のAPIキー」を取得（設定されていない場合はエラー）
-EXPECTED_API_KEY = os.getenv("INTERNAL_API_KEY")
-
 
 async def verify_api_key(api_key: str = Security(api_key_header)):
     """APIキーを検証する依存関数"""
-    if not EXPECTED_API_KEY:
-        # 開発中の考慮：サーバー側でキーが設定されていない場合
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="API Key is not configured on the server.",
-        )
-    if api_key != EXPECTED_API_KEY:
-        # キーが一致しない場合は 403 Forbidden を返す
+    if api_key != settings.internal_api_key:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Could not validate credentials"
         )
+
     return api_key
 
 
-# --- 初期化 ---
-PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
-if PROJECT_ID is None:
-    raise ValueError("環境変数 'GOOGLE_CLOUD_PROJECT' が指定されていません")
-LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "asia-northeast1")
-ai_core = GeminiCore(project_id=PROJECT_ID, location=LOCATION)
+ai_core = GeminiCore()
 
 
 # リクエストの型定義
