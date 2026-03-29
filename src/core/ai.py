@@ -1,21 +1,21 @@
 import os
 from typing import TypeVar
 
-from dotenv import load_dotenv
 from google import genai
 from pydantic import BaseModel
 
-load_dotenv()
+from src.core.config import settings
 
 # ジェネリクスの定義
 T = TypeVar("T", bound=BaseModel)
 
 
 class GeminiCore:
-    def __init__(self, project_id: str, location: str):
-        # 設定が不足している場合はエラーを出して終了
-        if not project_id:
-            raise ValueError("GOOGLE_CLOUD_PROJECT が設定されていません。")
+    def __init__(
+        self,
+        project_id: str = settings.google_cloud_project,
+        location: str = settings.google_cloud_location,
+    ):
 
         self.client = genai.Client(vertexai=True, project=project_id, location=location)
         self.model_id = "gemini-2.5-flash"

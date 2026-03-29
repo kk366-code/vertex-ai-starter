@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     google_cloud_location: str = Field(default="asia-northeast1", alias="GOOGLE_CLOUD_LOCATION")
     gcs_bucket_name: str = Field(alias="GCS_BUCKET_NAME")
 
+    # セキュリティ・認証
+    internal_api_key: str = Field(alias="INTERNAL_API_KEY")
+
 
 # シングルトンとしてインスタンス化
 settings = Settings()  # type: ignore
