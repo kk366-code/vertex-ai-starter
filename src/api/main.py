@@ -185,9 +185,16 @@ async def handle_upload(
             # ここで unique な名前で保存されることが保証される
             gcs_uri = await storage.upload_file_async(str(local_path))
 
+            flower_prompt = (
+                "画像に花が写っているか判定してください。"
+                "花がある場合：その花の名前と特徴を短く説明してください。"
+                "花がない場合：必ず冒頭に『【花なし】』とつけて、何が写っているか一言教えてください。"
+            )
+
             # Gemini で解析
             result = await ai_core.analyze_image(
-                prompt="この写真に何が写っているか、スマホユーザー向けに短く教えて。",
+                # prompt="この写真に何が写っているか、スマホユーザー向けに短く教えて。",
+                prompt=flower_prompt,
                 gcs_uri=gcs_uri,
                 response_schema=AnalysisResult,
                 mime_type=file.content_type or "image/jpeg",
