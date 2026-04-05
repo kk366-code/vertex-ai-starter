@@ -27,7 +27,7 @@ class GeminiCore:
         # response_schema を指定せずに呼び出す
         response = await self.client.aio.models.generate_content(
             model=self.model_id,
-            contents=[full_prompt],
+            contents=full_prompt,
             config=genai.types.GenerateContentConfig(
                 temperature=0.7,  # 自由回答なので少し創造性を上げる
             ),
@@ -50,10 +50,11 @@ class GeminiCore:
         # 画像の有無に応じたインストラクションの追加
         if gcs_uri:
             full_prompt = f"【画像あり】添付画像を解析してください。\n{prompt}"
-            contents = [
-                full_prompt,
+            parts: list[genai.types.Part] = [
+                genai.types.Part.from_text(text=full_prompt),
                 genai.types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type),
             ]
+            contents = genai.types.UserContent(parts)
         else:
             # ハルシネーション対策
             # 画像がないことをAIに強く意識させる
@@ -62,7 +63,7 @@ class GeminiCore:
                 "解析は行わず、successフィールドをFalseにして報告してください。\n"
                 f"ユーザーからの指示：{prompt}"
             )
-            contents = [full_prompt]
+            contents = genai.types.UserContent(full_prompt)
 
         # Pydanticモデルをresponse_schemaに指定
         config = genai.types.GenerateContentConfig(
@@ -93,18 +94,26 @@ class GeminiCore:
             raise ValueError("画像解析にはGCS URIが必須です。")
 
         full_prompt = f"【画像解析】添付画像を詳細に確認してください。\n{prompt}"
-        contents = [full_prompt, genai.types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type)]
+        parts: list[genai.types.Part] = [
+            genai.types.Part.from_text(text=full_prompt),
+            genai.types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type),
+        ]
+        contents = genai.types.UserContent(parts)
         return await self._execute_structured_inference(contents, response_schema)
 
     async def analyze_text(self, prompt: str, response_schema: type[T]) -> T:
         """テキスト専用の解析。画像は一切送らない"""
         full_prompt = f"【テキスト解析】以下の指示に従ってください。\n{prompt}"
-        contents = [full_prompt]
+        contents = genai.types.UserContent(full_prompt)
         return await self._execute_structured_inference(contents, response_schema)
 
     # --- 共通ロジック ---
 
-    async def _execute_structured_inference(self, contents: list, response_schema: type[T]) -> T:
+    async def _execute_structured_inference(
+        self,
+        contents: genai.types.Content,
+        response_schema: type[T],
+    ) -> T:
         """実際のAPI呼び出しとパースを行う共通内部メソッド"""
         config = genai.types.GenerateContentConfig(
             response_mime_type="application/json",
