@@ -52,3 +52,6 @@ upload/*
 repomix-output.xml
 repomix-output.txt
 repomix-context.xml
+
+# Claude Code
+.claude
