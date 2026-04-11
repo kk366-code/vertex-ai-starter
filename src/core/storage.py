@@ -2,8 +2,8 @@ import asyncio
 import os
 from concurrent.futures import ThreadPoolExecutor
 
+import google.cloud.storage as storage
 from dotenv import load_dotenv
-from google.cloud import storage
 
 load_dotenv()
 
