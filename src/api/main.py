@@ -5,13 +5,24 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, Security, UploadFile, status
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Security,
+    UploadFile,
+    status,
+)
 from fastapi.responses import HTMLResponse
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from src.core.ai import GeminiCore
+from src.core.bigquery import bq_manager
 from src.core.config import settings
 from src.core.schema import AnalysisResult
 from src.core.storage import CloudStorageManager
@@ -53,6 +64,7 @@ class AnalysisRequest(BaseModel):
 async def analyze(
     request: AnalysisRequest,
     api_key: Annotated[str, Security(verify_api_key)],
+    background_tasks: BackgroundTasks,
 ):
     """
     画像を解析して構造化データを返すエンドポイント（要APIキー認証）
@@ -60,11 +72,17 @@ async def analyze(
     try:
         if request.gcs_uri:
             # 画像解析
-            return await ai_core.analyze_image(
+            result = await ai_core.analyze_image(
                 prompt=request.prompt,
                 gcs_uri=request.gcs_uri,
                 response_schema=AnalysisResult,
             )
+
+            # BigQueryへの保存をバックグラウンドで実行
+            if isinstance(result, AnalysisResult):
+                background_tasks.add_task(bq_manager.log_analysis, result)
+
+            return result
         else:
             # テキスト解析（dictが返る）
             answer = await ai_core.analyze_text_simple(
