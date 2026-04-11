@@ -36,11 +36,12 @@ jobs:
           docker build -t asia-northeast1-docker.pkg.dev/${{ secrets.GOOGLE_CLOUD_PROJECT }}/repo/app:${{ github.sha }} .
           docker push asia-northeast1-docker.pkg.dev/${{ secrets.GOOGLE_CLOUD_PROJECT }}/repo/app:${{ github.sha }}
 
-      # 4. Cloud Run へのデプロイ (規約に従い環境変数を注入)
+      # 4. Cloud Run へのデプロイ (リポジトリから環境変数を注入)
       - name: Deploy to Cloud Run
         uses: "google-github-actions/deploy-cloudrun@v2"
         with:
           service: "gemini-analysis-api-dev"
+          service_account: "app-runtime-sa@${{ secrets.GOOGLE_CLOUD_PROJECT }}.iam.gserviceaccount.com"
           region: "asia-northeast1"
           image: "asia-northeast1-docker.pkg.dev/${{ secrets.GOOGLE_CLOUD_PROJECT }}/repo/app:${{ github.sha }}"
           env_vars: |-
