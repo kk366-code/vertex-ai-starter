@@ -41,7 +41,7 @@ jobs:
         uses: "google-github-actions/deploy-cloudrun@v2"
         with:
           service: "gemini-analysis-api-dev"
-          service_account: "app-runtime-sa@${{ secrets.GOOGLE_CLOUD_PROJECT }}.iam.gserviceaccount.com"
+          flags: "--service-account=app-runtime-sa@${{ secrets.GOOGLE_CLOUD_PROJECT }}.iam.gserviceaccount.com"
           region: "asia-northeast1"
           image: "asia-northeast1-docker.pkg.dev/${{ secrets.GOOGLE_CLOUD_PROJECT }}/repo/app:${{ github.sha }}"
           env_vars: |-
@@ -49,3 +49,5 @@ jobs:
             GOOGLE_CLOUD_LOCATION=asia-northeast1
             GCS_BUCKET_NAME=${{ secrets.GCS_BUCKET_NAME }}
             INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}
+            BQ_DATASET=${{ secrets.BQ_DATASET }}
+            BQ_TABLE=${{ secrets.BQ_TABLE }}
