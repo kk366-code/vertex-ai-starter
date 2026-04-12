@@ -25,4 +25,30 @@ class AnalysisResult(BaseModel):
     )
 
 
+class SensorReading(BaseModel):
+    """環境センサーの1件の計測データ"""
+
+    sensor_id: str = Field(description="センサーの識別ID。例: 'office-01'")
+    type: str = Field(description="センサーの種類。例: 'temperature', 'humidity', 'co2'")
+    value: float = Field(description="計測値。温度(℃)、湿度(%)、CO2(ppm) など。")
+    comfort_level: str = Field(description="快適度の判定。'comfort' | 'warning' | 'danger'")
+    timestamp: str = Field(description="計測日時 (ISO 8601形式)。例: '2026-04-12T10:00:00Z'")
+
+
+class EnvironmentAnalysisResult(BaseModel):
+    """環境センサーデータのAI解析結果"""
+
+    success: bool = Field(description="解析が正常に完了した場合はTrue。")
+    overall_status: str = Field(
+        description="環境全体の状態。'comfortable' | 'warning' | 'danger' のいずれか。"
+    )
+    summary: str = Field(description="環境全体の状況を説明する日本語の文章。")
+    recommendations: list[str] = Field(
+        description="環境改善のための具体的な提案リスト（日本語）。改善不要な場合は空リスト。"
+    )
+    confidence_score: float = Field(
+        description="解析の信頼度 (0.0-1.0)。", ge=0, le=1
+    )
+
+
 # 複数のタスクがある場合は、ここに別のモデルを定義して使い分けます
