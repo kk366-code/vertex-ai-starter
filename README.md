@@ -248,8 +248,21 @@ gcloud iam service-accounts add-iam-policy-binding $RUNTIME_SA_EMAIL \
     service: 'サービス名'
     region: 'asia-northeast1'
     # 以下の1行を追記
-    service_account: "app-runtime-sa@${{ secrets.GOOGLE_CLOUD_PROJECT }}.iam.gserviceaccount.com"
+    flags: "--service-account=app-runtime-sa@${{ secrets.GOOGLE_CLOUD_PROJECT }}.iam.gserviceaccount.com"
+    env_vars: |-
+              GOOGLE_CLOUD_PROJECT=${{ secrets.GOOGLE_CLOUD_PROJECT }}
+
+              # 省略
+              
+              # 以下の2行を追記
+              BQ_DATASET=${{ secrets.BQ_DATASET }}
+              BQ_TABLE=${{ secrets.BQ_TABLE }}
 ```
+
+GitHub リポジトリの Settings → Environments → Environment secrets → add environment secret に以下を追加してください:
+
+BQ_DATASET: BigQuery のデータセット名
+BQ_TABLE: BigQuery のテーブル名
 
 ---
 
