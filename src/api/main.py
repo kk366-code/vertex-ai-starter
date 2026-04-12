@@ -16,6 +16,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.security.api_key import APIKeyHeader
 from fastapi.templating import Jinja2Templates
@@ -24,10 +25,18 @@ from pydantic import BaseModel
 from src.core.ai import GeminiCore
 from src.core.bigquery import bq_manager
 from src.core.config import settings
-from src.core.schema import AnalysisResult
+from src.core.schema import AnalysisResult, EnvironmentAnalysisResult, SensorReading
 from src.core.storage import CloudStorageManager
 
 app = FastAPI(title="Gemini AI Analysis API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 本番環境では ["https://your-app.com"] のように絞ること
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
@@ -55,6 +64,11 @@ ai_core = GeminiCore()
 class AnalysisRequest(BaseModel):
     prompt: str
     gcs_uri: str | None = None
+
+
+class EnvironmentAnalysisRequest(BaseModel):
+    readings: list[SensorReading]
+    prompt: str | None = None
 
 
 # --- エンドポイント ---
@@ -152,6 +166,33 @@ async def analyze_uploaded_media(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Analysis pipeline failed: {str(e)}",
             ) from e
+
+
+@app.post("/analyze-environment", response_model=EnvironmentAnalysisResult)
+async def analyze_environment(
+    request: EnvironmentAnalysisRequest,
+    api_key: Annotated[str, Security(verify_api_key)],
+) -> EnvironmentAnalysisResult:
+    """
+    環境センサーデータをAIで解析し、快適度と改善提案を返すエンドポイント（要APIキー認証）
+    """
+    sensor_lines = "\n".join(
+        f"- {r.type}: {r.value} (センサー: {r.sensor_id}, 状態: {r.comfort_level})"
+        for r in request.readings
+    )
+    base_prompt = (
+        f"以下のオフィス環境センサーデータを分析し、環境の快適さと改善提案を提供してください:\n{sensor_lines}"
+    )
+    prompt = request.prompt or base_prompt
+
+    try:
+        result = await ai_core.analyze_text(
+            prompt=prompt,
+            response_schema=EnvironmentAnalysisResult,
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/health")
