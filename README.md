@@ -156,6 +156,167 @@ uv sync
 - アクセス制御: Uniform（均一性）
   - Hierarchical Namespace との互換性を保ちつつ、IAM（Identity and Access Management）による一元的な権限管理を行い、最小権限の原則（Least Privilege）を適用しています。
 
+
+## 📊 分析基盤 (Google Cloud BigQuery)
+
+本プロジェクトでは、AIによる解析結果を構造化データとして蓄積し、将来的な統計分析やBIツールでの可視化を容易にするため、BigQuery を採用しています。
+
+### スキーマ設計のポイント
+
+- **非正規化によるパフォーマンス最適化**:
+  `objects` カラムに **`RECORD` 型の `REPEATED`（繰り返し）** モードを採用しています。これにより、1枚の写真に含まれる複数の検出結果を、テーブルを分割することなく高速に集計・分析することが可能です。
+
+- **タイムスタンプ管理**:
+  すべてのレコードに `created_at (TIMESTAMP)` を付与し、時系列データとしての分析（例：時間帯ごとの物体検出トレンド）に対応しています。
+
+### 🛠 セットアップ手順
+
+#### 1. サービスアカウントの作成
+
+```bash
+# サービスアカウントの作成
+gcloud iam service-accounts create app-runtime-sa \
+    --display-name="App Runtime Service Account"
+
+# 変数のセット
+PROJECT_ID=$(gcloud config get-value project)
+RUNTIME_SA_EMAIL="app-runtime-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+```
+
+#### 2. 必要な権限 (Role) の一括付与
+
+このアプリが動作するために必要な3つの権限（AI利用・ストレージ操作・ログ記録）を付与します。
+
+```bash
+# Vertex AI (Gemini) の利用権限
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$RUNTIME_SA_EMAIL" \
+    --role="roles/aiplatform.user"
+
+# GCS 操作権限（画像解析・保存）
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$RUNTIME_SA_EMAIL" \
+    --role="roles/storage.objectUser"
+
+# BigQuery へのデータ書き込み権限
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$RUNTIME_SA_EMAIL" \
+    --role="roles/bigquery.dataEditor"
+
+# BigQuery でのジョブ実行権限（挿入時に必要）
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$RUNTIME_SA_EMAIL" \
+    --role="roles/bigquery.jobUser"
+
+```
+
+### 3. CI/CD (GitHub Actions) のための権限設定
+
+GitHub Actions から Cloud Run へデプロイする際、デプロイを実行するアカウント（GitHub用SA）が、アプリ実行用のアカウント（`app-runtime-sa`）として振る舞えるように設定する必要があります。
+
+#### 1. GitHub 用サービスアカウントの特定
+
+まず、GitHub デプロイに使用しているサービスアカウントのメールアドレスを確認します。
+
+```bash
+# 一覧から GitHub 用と思われるアドレス（例: github-actions-sa@...）を特定
+gcloud iam service-accounts list
+```
+
+#### 2. 「サービスアカウントユーザー」権限の付与
+
+GitHub 用の SA に対して、`app-runtime-sa` を「使用する」権限を与えます。
+
+```bash
+# GitHub用SAのアドレスを変数にセット
+export GITHUB_SA_EMAIL="確認したアドレス"
+
+# 権限の付与
+gcloud iam service-accounts add-iam-policy-binding $RUNTIME_SA_EMAIL \
+    --member="serviceAccount:$GITHUB_SA_EMAIL" \
+    --role="roles/iam.serviceAccountUser"
+```
+
+#### 3. GitHub Workflow の更新
+
+`.github/workflows/deploy.yml` のデプロイステップに、実行用サービスアカウントを明示的に指定します。
+
+```yaml
+- name: 'Deploy to Cloud Run'
+  uses: 'google-github-actions/deploy-cloudrun@v2'
+  with:
+    service: 'サービス名'
+    region: 'asia-northeast1'
+    # 以下の1行を追記
+    service_account: "app-runtime-sa@${{ secrets.GOOGLE_CLOUD_PROJECT }}.iam.gserviceaccount.com"
+```
+
+---
+
+### 💡 なぜこの手順が必要なのか？
+
+通常、GitHub Actions は「デプロイする作業」はできますが、「どの権限（サービスアカウント）でアプリを動かすか」を勝手に決めることはできません。
+この設定をすることで、**「GitHub Actions くんが、app-runtime-sa というお面を被ってアプリを起動すること」**を Google Cloud が許可してくれるようになります。
+
+
+#### 1. データセットとテーブルの作成
+
+Google Cloud コンソール、または `gcloud` コマンドで作成します。
+
+```bash
+# データセットの作成
+gcloud alpha bq datasets create gemini_logs --location=asia-northeast1
+
+# テーブルの作成（スキーマ定義）
+# 注意: objects は RECORD型(REPEATED)として定義します
+```
+
+> [!IMPORTANT]
+> **スキーマ定義（JSON形式）**
+> 手動でテーブルを作成する場合は、以下のフィールド構成を推奨します。
+> - `description`: STRING (NULLABLE)
+> - `confidence_score`: FLOAT (NULLABLE)
+> - `created_at`: TIMESTAMP (NULLABLE)
+> - `objects`: **RECORD (REPEATED)**
+>   - `objects.name`: STRING (NULLABLE)
+>   - `objects.count`: INTEGER (NULLABLE)
+
+#### 2. IAM権限の付与
+
+Cloud Run から BigQuery へデータを書き込むための権限を付与します。
+
+**🐧 Linux / macOS (bash, zsh):**
+```bash
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$SERVICE_ACCOUNT" \
+    --role="roles/bigquery.dataEditor"
+```
+
+**🪟 Windows (PowerShell):**
+```powershell
+gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SERVICE_ACCOUNT" --role="roles/bigquery.dataEditor"
+```
+
+### 📈 統計解析の例
+
+蓄積されたデータは、以下のSQLで簡単に集計できます。
+
+```sql
+-- 検出された物体の出現頻度ランキング
+SELECT 
+    obj.name, 
+    COUNT(*) as frequency
+FROM 
+    `your_project.gemini_logs.analysis_results`,
+    UNNEST(objects) as obj
+GROUP BY 
+    obj.name
+ORDER BY 
+    frequency DESC
+```
+
+
+
 ## 🛠 開発環境の設定 (VSCode)
 
 ### ターミナルから VSCode を開く設定 (`code` コマンド)
