@@ -19,11 +19,15 @@ class BigQueryManager:
         """
         try:
             # Pydantic モデルを辞書形式に変換し、タイムスタンプを追加
-            row = result.model_dump()
-            row["created_at"] = datetime.now(UTC).isoformat()
-
-            # objects フィールド（List[DetectedObject]）を JSON 文字列またはリストとして処理
-            # BigQuery のスキーマが JSON 型なら、辞書のリストのままで OK
+            # Pydantic のシリアライザを経由せず属性を直接参照して純粋な dict を組み立てる
+            # success は BQ テーブルに存在しないため除外
+            objects_list = [{"name": obj.name, "count": obj.count} for obj in result.objects]
+            row = {
+                "description": result.description,
+                "objects": objects_list,
+                "confidence_score": result.confidence_score,
+                "created_at": datetime.now(UTC).isoformat(),
+            }
 
             errors = self.client.insert_rows_json(self.table_id, [row])
 
