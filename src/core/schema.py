@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -39,8 +41,8 @@ class EnvironmentAnalysisResult(BaseModel):
     """環境センサーデータのAI解析結果"""
 
     success: bool = Field(description="解析が正常に完了した場合はTrue。")
-    overall_status: str = Field(
-        description="環境全体の状態。'comfortable' | 'warning' | 'danger' のいずれか。"
+    overall_status: Literal["comfortable", "warning", "danger"] = Field(
+        description="環境全体の状態。"
     )
     summary: str = Field(description="環境全体の状況を説明する日本語の文章。")
     recommendations: list[str] = Field(
