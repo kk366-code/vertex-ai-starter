@@ -177,7 +177,7 @@ async def analyze_environment(
     環境センサーデータをAIで解析し、快適度と改善提案を返すエンドポイント（要APIキー認証）
     """
     sensor_lines = "\n".join(
-        f"- {r.type}: {r.value} (センサー: {r.sensor_id}, 状態: {r.comfort_level})"
+        f"- {r.type}: {r.value} (センサー: {r.sensor_id})"
         for r in request.readings
     )
     base_prompt = (
