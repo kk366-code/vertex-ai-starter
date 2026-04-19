@@ -39,7 +39,6 @@ class SensorReading(BaseModel):
     sensor_id: str = Field(description="センサーの識別ID。例: 'office-01'")
     type: str = Field(description="センサーの種類。例: 'temperature', 'humidity', 'co2'")
     value: float = Field(description="計測値。温度(℃)、湿度(%)、CO2(ppm) など。")
-    comfort_level: ComfortLevel = Field(description="快適度の判定。")
     timestamp: str = Field(description="計測日時 (ISO 8601形式)。例: '2026-04-12T10:00:00Z'")
 
 
