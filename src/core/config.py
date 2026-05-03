@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     bq_dataset: str = Field(alias="BQ_DATASET")
     bq_table: str = Field(alias="BQ_TABLE")
 
+    # Firestore
+    firestore_database: str = Field(default="(default)", alias="FIRESTORE_DATABASE")
+
     # セキュリティ・認証
     internal_api_key: str = Field(alias="INTERNAL_API_KEY")
 
