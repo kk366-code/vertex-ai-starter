@@ -125,6 +125,11 @@ cp .env.example .env
 | --- | --- | --- |
 | `GOOGLE_CLOUD_PROJECT` | 使用するプロジェクトID | `your-project-id-123` |
 | `GOOGLE_CLOUD_LOCATION` | Vertex AIのリソース場所 | `asia-northeast1` |
+| `GCS_BUCKET_NAME` | GCSバケット名 | `my-bucket` |
+| `BQ_DATASET` | BigQueryのデータセット名 | `gemini_logs` |
+| `BQ_TABLE` | BigQueryのテーブル名 | `analysis_results` |
+| `INTERNAL_API_KEY` | APIキー認証用の秘密キー | `your-secret-key` |
+| `FIRESTORE_DATABASE` | Firestoreデータベース名（省略可） | `(default)` |
 
 ---
 
@@ -207,6 +212,11 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:$RUNTIME_SA_EMAIL" \
     --role="roles/bigquery.jobUser"
+
+# Firestore への読み書き権限
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$RUNTIME_SA_EMAIL" \
+    --role="roles/datastore.user"
 
 ```
 
@@ -329,6 +339,50 @@ ORDER BY
 ```
 
 
+
+## 💾 ドキュメントDB (Cloud Firestore)
+
+本プロジェクトでは、ユーザープロフィールや求人分析結果などのドキュメントデータをリアルタイムに読み書きするために Firestore（Native モード）を採用しています。BigQuery がログ・集計用途であるのに対し、Firestore はアプリケーションのCRUD操作に特化しています。
+
+### 🛠 セットアップ手順
+
+#### 1. Firestore データベースの作成（初回のみ）
+
+プロジェクトに対して一度だけ実行します。
+
+```bash
+gcloud firestore databases create \
+    --project=$(gcloud config get-value project) \
+    --location=asia-northeast1 \
+    --type=firestore-native
+```
+
+> [!NOTE]
+> データベース名はデフォルトの `(default)` を使用します。`.env` の `FIRESTORE_DATABASE` は省略可能です（デフォルト値: `(default)`）。
+
+#### 2. IAM権限の付与
+
+Cloud Run のサービスアカウントに Firestore への読み書き権限を付与します（上記「サービスアカウントの権限付与」でまとめて実施済みの場合は不要です）。
+
+```bash
+PROJECT_ID=$(gcloud config get-value project)
+RUNTIME_SA_EMAIL="app-runtime-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$RUNTIME_SA_EMAIL" \
+    --role="roles/datastore.user"
+```
+
+#### 3. ローカル開発時の認証確認
+
+ローカルで動作確認する場合は、ADC（Application Default Credentials）が設定済みであれば追加作業は不要です。
+
+```bash
+# 未設定の場合のみ実行
+gcloud auth application-default login
+```
+
+---
 
 ## 🛠 開発環境の設定 (VSCode)
 
