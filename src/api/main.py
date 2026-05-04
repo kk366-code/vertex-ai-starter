@@ -18,13 +18,14 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-from fastapi.security.api_key import APIKeyHeader
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+from src.api.auth import verify_api_key
+from src.api.jobs import router as jobs_router
+from src.api.strengths import router as strengths_router
 from src.core.ai import GeminiCore
 from src.core.bigquery import bq_manager
-from src.core.config import settings
 from src.core.schema import AnalysisResult, EnvironmentAnalysisResult, SensorReading
 from src.core.storage import CloudStorageManager
 
@@ -37,25 +38,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(strengths_router)
+app.include_router(jobs_router)
+
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-
-# --- 認証設定 ---
-API_KEY_NAME = "X-API-KEY"
-# ヘッダーから X-API-KEY を探す設定
-api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
-
-
-async def verify_api_key(api_key: str = Security(api_key_header)):
-    """APIキーを検証する依存関数"""
-    if api_key != settings.internal_api_key:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Could not validate credentials",
-        )
-
-    return api_key
-
 
 ai_core = GeminiCore()
 
