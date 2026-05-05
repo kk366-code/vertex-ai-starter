@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 from src.api.auth import verify_api_key
 from src.api.jobs import router as jobs_router
+from src.api.pdf import router as pdf_router
 from src.api.resume import router as resume_router
 from src.api.strengths import router as strengths_router
 from src.core.ai import GeminiCore
@@ -42,6 +43,7 @@ app.add_middleware(
 app.include_router(strengths_router)
 app.include_router(jobs_router)
 app.include_router(resume_router)
+app.include_router(pdf_router, prefix="/pdf", tags=["pdf"])
 
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
