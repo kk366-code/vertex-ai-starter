@@ -1,6 +1,36 @@
 from pydantic import BaseModel, Field
 
 
+class StarEpisode(BaseModel):
+    """STAR形式の印象的なエピソード"""
+
+    title: str = Field(description="エピソードのタイトル（一言で）")
+    situation: str = Field(description="Situation: 状況・背景")
+    task: str = Field(description="Task: 課題・自分の役割")
+    action: str = Field(description="Action: 取った行動")
+    result: str = Field(description="Result: 結果・学び")
+
+
+class PersonalProfile(BaseModel):
+    """面接対策を「あなたらしく」するためのパーソナルプロフィール"""
+
+    values: list[str] = Field(
+        description="価値観・信条のリスト。例: ['自律と信頼', '学び続けること']"
+    )
+    influential_items: list[str] = Field(
+        description="影響を受けた本・人のリスト。例: ['ティール組織', '〇〇さん（元上司）']"
+    )
+    episodes: list[StarEpisode] = Field(
+        description="印象的なエピソード（STAR形式）のリスト"
+    )
+    career_vision: str = Field(
+        description="キャリアビジョン（5年後・10年後にどうなりたいか）"
+    )
+    work_style: str = Field(
+        description="働き方の好み（リモート・裁量・チームのあり方など）"
+    )
+
+
 class WorkExperience(BaseModel):
     """職歴の1件分"""
 
