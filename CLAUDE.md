@@ -39,10 +39,11 @@
   - `tempfile.TemporaryDirectory(dir=Path("upload"))` を使用し、作業完了後（またはエラー時）に自動削除されるように設計する。
   - 元ファイルを破壊・削除しないよう、パスの分離を徹底する。
 
-## 📝 Git Commit Convention
+## 📝 Git & PR Convention
 
 - **タイトル（1行目）**: 英語で記述する。例: `feat: add agent UI`, `fix: handle empty URL response`
 - **本文（3行目以降）**: 日本語で記述する。何を・なぜ変えたかを説明する。
+- **PRの作成**: 実装完了後は必ずプルリクエストを作成する。既存のPRがマージ済みの場合は、新しいPRを作成する（マージ済みPRには追加しない）。PR作成前に `git fetch origin main` で最新の main を取得し、`git log origin/main..HEAD` でそのPRに含まれるコミットを確認すること。
 
 ## ⚠️ Important Environment Variables
 
