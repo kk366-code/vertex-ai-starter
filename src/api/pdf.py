@@ -65,3 +65,18 @@ async def extract_text_from_pdf(
     )
     await firestore_manager.save_pdf_text(result)
     return result
+
+
+@router.get("/extract-text/{doc_id}", response_model=PdfTextResult)
+async def get_pdf_text(
+    doc_id: str,
+    api_key: Annotated[str, Security(verify_api_key)],
+) -> PdfTextResult:
+    """保存済みPDFテキスト抽出結果をIDで取得する。"""
+    result = await firestore_manager.get_pdf_text(doc_id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"指定されたID '{doc_id}' のPDFテキスト結果が見つかりません。",
+        )
+    return result
