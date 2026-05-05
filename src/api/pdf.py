@@ -1,13 +1,15 @@
 import shutil
 import tempfile
+import uuid
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, Security, UploadFile, status
-from pydantic import BaseModel
 
 from src.api.auth import verify_api_key
 from src.core.ai import GeminiCore
+from src.core.firestore import firestore_manager
+from src.core.pdf_schema import PdfTextResult
 from src.core.storage import CloudStorageManager
 
 router = APIRouter()
@@ -21,17 +23,12 @@ _EXTRACT_PROMPT = (
 )
 
 
-class TextExtractionResult(BaseModel):
-    text: str
-    filename: str
-
-
-@router.post("/extract-text", response_model=TextExtractionResult)
+@router.post("/extract-text", response_model=PdfTextResult, status_code=status.HTTP_201_CREATED)
 async def extract_text_from_pdf(
     file: Annotated[UploadFile, File(description="テキスト抽出対象のPDFファイル")],
     api_key: Annotated[str, Security(verify_api_key)],
-) -> TextExtractionResult:
-    """PDFファイルをアップロードし、Geminiでテキストを抽出して返す。"""
+) -> PdfTextResult:
+    """PDFファイルをアップロードし、Geminiでテキストを抽出してFirestoreに保存する。"""
     if file.content_type != "application/pdf":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -61,4 +58,10 @@ async def extract_text_from_pdf(
                 detail=f"PDF解析に失敗しました: {e}",
             ) from e
 
-    return TextExtractionResult(text=text, filename=file.filename or "document.pdf")
+    result = PdfTextResult(
+        id=uuid.uuid4().hex,
+        text=text,
+        source_gcs_uri=gcs_uri,
+    )
+    await firestore_manager.save_pdf_text(result)
+    return result
