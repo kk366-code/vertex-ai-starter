@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>職務経歴書 × 求人 AIマッチング</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+
+  <body class="bg-slate-50 min-h-screen">
+    <div class="max-w-3xl mx-auto px-4 py-8">
+      <h1 class="text-2xl font-bold text-center text-slate-800 mb-1">📄 職務経歴書 × 求人 AIマッチング</h1>
+      <p class="text-center text-slate-500 text-sm mb-8">職務経歴書PDF × 求人情報 → 適合度分析・面接対策を自動生成</p>
+
+      <!-- API Key -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">API Key</label>
+        <div class="flex gap-2">
+          <input
+            id="api-key-input"
+            type="password"
+            placeholder="INTERNAL_API_KEY を入力"
+            class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          />
+          <button
+            onclick="saveApiKey()"
+            class="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
+          >
+            保存
+          </button>
+        </div>
+        <p id="api-key-status" class="text-xs text-slate-400 mt-1"></p>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="bg-emerald-600 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">1</span>
+          <h2 class="font-semibold text-slate-800">職務経歴書の登録</h2>
+        </div>
+
+        <div id="profile-status" class="mb-4 p-3 rounded-lg bg-slate-50 border border-slate-100 text-sm text-slate-500">
+          読み込み中...
+        </div>
+
+        <label class="block text-sm text-slate-600 mb-2">職務経歴書 PDF をアップロード</label>
+        <div class="flex gap-2">
+          <input
+            id="pdf-input"
+            type="file"
+            accept="application/pdf"
+            class="flex-1 text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+          />
+          <button
+            onclick="uploadProfile()"
+            id="upload-btn"
+            class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+          >
+            アップロード
+          </button>
+        </div>
+        <div id="upload-progress" class="hidden mt-3 text-sm text-emerald-600">⏳ 職務経歴書を解析中... (30秒ほどかかります)</div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="bg-emerald-600 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">2</span>
+          <h2 class="font-semibold text-slate-800">求人分析の実行</h2>
+        </div>
+
+        <div class="mb-4">
+          <div class="flex gap-2 mb-3">
+            <button onclick="setInputMode('text')" id="mode-text" class="flex-1 py-2 text-sm font-medium rounded-lg bg-emerald-600 text-white transition-colors">テキスト入力</button>
+            <button onclick="setInputMode('url')" id="mode-url" class="flex-1 py-2 text-sm font-medium rounded-lg bg-slate-100 text-slate-600 transition-colors">URL入力</button>
+          </div>
+
+          <div id="text-input-area">
+            <textarea
+              id="job-text"
+              rows="8"
+              placeholder="求人ページからコピーしたテキストをここに貼り付けてください..."
+              class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
+            ></textarea>
+          </div>
+
+          <div id="url-input-area" class="hidden">
+            <input
+              id="job-url"
+              type="url"
+              placeholder="https://example.com/jobs/12345"
+              class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            />
+            <p class="text-xs text-amber-600 mt-1">⚠️ ログイン必須・JS動的描画のページは取得できない場合があります。</p>
+          </div>
+        </div>
+
+        <button
+          onclick="analyzeJob()"
+          id="analyze-btn"
+          class="w-full bg-emerald-600 text-white py-3 rounded-lg font-semibold hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+        >
+          分析を実行
+        </button>
+
+        <div id="analyze-error" class="hidden mt-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <p class="text-sm font-semibold text-amber-800 mb-1">⚠️ このサイトでは取得できません</p>
+          <p id="analyze-error-detail" class="text-xs text-amber-700 leading-relaxed"></p>
+          <button onclick="setInputMode('text')" class="mt-2 text-xs text-emerald-600 underline">→ テキスト入力に切り替える</button>
+        </div>
+
+        <!-- Progress Steps -->
+        <div id="analysis-progress" class="hidden mt-4">
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+            <span id="prog-1">⬜ 求人情報抽出</span>
+            <span id="prog-2">⬜ 経歴マッチング</span>
+            <span id="prog-3">⬜ 面接Q&A生成</span>
+            <span id="prog-4">⬜ ギャップ分析</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-1.5">
+            <div id="progress-bar" class="bg-emerald-500 h-1.5 rounded-full transition-all duration-1000" style="width: 0%"></div>
+          </div>
+          <p class="text-xs text-center text-slate-400 mt-2">Geminiを4回呼び出しています... (30〜60秒かかります)</p>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="result-section" class="hidden">
+        <!-- Score Card -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
+          <h2 class="font-semibold text-slate-800 mb-4">📊 分析結果</h2>
+          <div class="flex items-center gap-6">
+            <div class="text-center">
+              <div id="score-value" class="text-4xl font-bold text-emerald-600"></div>
+              <div class="text-xs text-slate-500 mt-1">総合適合スコア</div>
+            </div>
+            <div class="flex-1">
+              <div class="w-full bg-slate-100 rounded-full h-3">
+                <div id="score-bar" class="h-3 rounded-full transition-all duration-700" style="width: 0%"></div>
+              </div>
+              <div id="job-summary" class="text-sm text-slate-600 mt-2"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-4">
+          <div class="flex border-b border-slate-200">
+            <button onclick="showTab('matches')" id="tab-matches" class="flex-1 py-3 text-sm font-medium text-emerald-600 border-b-2 border-emerald-600">経歴マッチング</button>
+            <button onclick="showTab('questions')" id="tab-questions" class="flex-1 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 border-b-2 border-transparent">面接Q&A</button>
+            <button onclick="showTab('gap')" id="tab-gap" class="flex-1 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 border-b-2 border-transparent">ギャップ分析</button>
+          </div>
+
+          <div id="tab-content-matches" class="p-6">
+            <div id="matches-list" class="space-y-3"></div>
+          </div>
+
+          <div id="tab-content-questions" class="p-6 hidden">
+            <div id="questions-list" class="space-y-4"></div>
+          </div>
+
+          <div id="tab-content-gap" class="p-6 hidden">
+            <p id="gap-text" class="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-semibold text-slate-800">📋 過去の分析</h2>
+          <button onclick="loadHistory()" class="text-xs text-emerald-600 hover:underline">更新</button>
+        </div>
+        <div id="history-list" class="space-y-2 text-sm text-slate-500">読み込み中...</div>
+      </div>
+    </div>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <script>
+      let currentMode = 'text';
+
+      // --- API Key ---
+
+      function saveApiKey() {
+        const key = document.getElementById('api-key-input').value.trim();
+        if (!key) return showToast('APIキーを入力してください', 'error');
+        localStorage.setItem('agent_api_key', key);
+        document.getElementById('api-key-status').textContent = '✓ 保存しました';
+        showToast('APIキーを保存しました');
+        loadProfile();
+        loadHistory();
+      }
+
+      function getApiKey() {
+        return localStorage.getItem('agent_api_key') || '';
+      }
+
+      window.addEventListener('DOMContentLoaded', () => {
+        const saved = getApiKey();
+        if (saved) {
+          document.getElementById('api-key-input').value = saved;
+          document.getElementById('api-key-status').textContent = '✓ 保存済み';
+          loadProfile();
+          loadHistory();
+        } else {
+          document.getElementById('profile-status').textContent = 'APIキーを入力して保存してください';
+          document.getElementById('history-list').textContent = 'APIキーを入力して保存してください';
+        }
+      });
+
+      // --- Input Mode ---
+
+      function setInputMode(mode) {
+        currentMode = mode;
+        document.getElementById('text-input-area').classList.toggle('hidden', mode !== 'text');
+        document.getElementById('url-input-area').classList.toggle('hidden', mode !== 'url');
+        document.getElementById('mode-text').className = `flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${mode === 'text' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'}`;
+        document.getElementById('mode-url').className = `flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${mode === 'url' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'}`;
+      }
+
+      // --- Profile ---
+
+      async function loadProfile() {
+        const key = getApiKey();
+        if (!key) return;
+        const el = document.getElementById('profile-status');
+        try {
+          const res = await fetch('/resume/profile', { headers: { 'X-API-KEY': key } });
+          if (res.ok) {
+            const profile = await res.json();
+            const skills = profile.skills.slice(0, 6).map(s =>
+              `<span class="inline-block bg-emerald-50 text-emerald-700 text-xs px-2 py-0.5 rounded-full mr-1 mb-1">${s}</span>`
+            ).join('');
+            const more = profile.skills.length > 6 ? `<span class="text-xs text-slate-400">+${profile.skills.length - 6}件</span>` : '';
+            const latestJob = profile.work_experiences[0];
+            el.innerHTML = `
+              <span class="text-green-700 font-medium">✓ 登録済み</span>
+              ${latestJob ? `<span class="text-slate-500 ml-2 text-xs">直近: ${latestJob.company}（${latestJob.role}）</span>` : ''}
+              <br><div class="mt-2">${skills}${more}</div>
+            `;
+          } else if (res.status === 404) {
+            el.textContent = '未登録です。職務経歴書PDFをアップロードしてください。';
+          } else {
+            el.textContent = '取得に失敗しました。';
+          }
+        } catch {
+          el.textContent = '接続エラーです。サーバーが起動しているか確認してください。';
+        }
+      }
+
+      async function uploadProfile() {
+        const key = getApiKey();
+        if (!key) return showToast('APIキーを保存してください', 'error');
+        const file = document.getElementById('pdf-input').files[0];
+        if (!file) return showToast('PDFファイルを選択してください', 'error');
+
+        const btn = document.getElementById('upload-btn');
+        const progress = document.getElementById('upload-progress');
+        btn.disabled = true;
+        progress.classList.remove('hidden');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+          const res = await fetch('/resume/profile', {
+            method: 'POST',
+            headers: { 'X-API-KEY': key },
+            body: formData,
+          });
+          if (res.ok) {
+            showToast('職務経歴書を登録しました ✨');
+            await loadProfile();
+          } else {
+            const err = await res.json();
+            showToast(err.detail || 'アップロードに失敗しました', 'error');
+          }
+        } catch {
+          showToast('接続エラーが発生しました', 'error');
+        } finally {
+          btn.disabled = false;
+          progress.classList.add('hidden');
+        }
+      }
+
+      // --- Job Analysis ---
+
+      async function analyzeJob() {
+        const key = getApiKey();
+        if (!key) return showToast('APIキーを保存してください', 'error');
+
+        const formData = new FormData();
+        if (currentMode === 'text') {
+          const text = document.getElementById('job-text').value.trim();
+          if (!text) return showToast('求人テキストを入力してください', 'error');
+          formData.append('text', text);
+        } else {
+          const url = document.getElementById('job-url').value.trim();
+          if (!url) return showToast('URLを入力してください', 'error');
+          formData.append('url', url);
+        }
+
+        const btn = document.getElementById('analyze-btn');
+        const progressSection = document.getElementById('analysis-progress');
+        const errorBox = document.getElementById('analyze-error');
+        btn.disabled = true;
+        progressSection.classList.remove('hidden');
+        errorBox.classList.add('hidden');
+        document.getElementById('result-section').classList.add('hidden');
+
+        startProgressAnimation();
+
+        try {
+          const res = await fetch('/resume/jobs', {
+            method: 'POST',
+            headers: { 'X-API-KEY': key },
+            body: formData,
+          });
+
+          stopProgressAnimation(res.ok);
+
+          if (res.ok) {
+            const result = await res.json();
+            renderResult(result);
+            showToast('分析が完了しました ✨');
+            await loadHistory();
+          } else {
+            const err = await res.json();
+            const detail = err.detail || '分析に失敗しました';
+            if (res.status === 422 && currentMode === 'url') {
+              document.getElementById('analyze-error-detail').textContent = detail;
+              errorBox.classList.remove('hidden');
+            } else {
+              showToast(detail, 'error');
+            }
+          }
+        } catch {
+          stopProgressAnimation(false);
+          showToast('接続エラーが発生しました', 'error');
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      let progressTimer = null;
+      let progressStep = 0;
+      const steps = ['prog-1', 'prog-2', 'prog-3', 'prog-4'];
+      const stepLabels = ['求人情報抽出', '経歴マッチング', '面接Q&A生成', 'ギャップ分析'];
+      const stepWidths = [25, 50, 75, 100];
+
+      function startProgressAnimation() {
+        progressStep = 0;
+        steps.forEach((id, i) => { document.getElementById(id).textContent = `⬜ ${stepLabels[i]}`; });
+        document.getElementById('progress-bar').style.width = '0%';
+        progressTimer = setInterval(() => {
+          if (progressStep < steps.length) {
+            if (progressStep > 0) document.getElementById(steps[progressStep - 1]).textContent = `✅ ${stepLabels[progressStep - 1]}`;
+            document.getElementById(steps[progressStep]).textContent = `⏳ ${stepLabels[progressStep]}`;
+            document.getElementById('progress-bar').style.width = `${stepWidths[progressStep]}%`;
+            progressStep++;
+          }
+        }, 12000);
+      }
+
+      function stopProgressAnimation(success) {
+        clearInterval(progressTimer);
+        if (success) {
+          steps.forEach((id, i) => { document.getElementById(id).textContent = `✅ ${stepLabels[i]}`; });
+          document.getElementById('progress-bar').style.width = '100%';
+        }
+        setTimeout(() => document.getElementById('analysis-progress').classList.add('hidden'), 1500);
+      }
+
+      // --- Render Result ---
+
+      function renderResult(result) {
+        const section = document.getElementById('result-section');
+        section.classList.remove('hidden');
+
+        const score = result.overall_fit_score;
+        const pct = Math.round(score * 100);
+        document.getElementById('score-value').textContent = `${pct}%`;
+        const bar = document.getElementById('score-bar');
+        bar.style.width = `${pct}%`;
+        bar.className = `h-3 rounded-full transition-all duration-700 ${pct >= 70 ? 'bg-green-500' : pct >= 50 ? 'bg-yellow-400' : 'bg-red-400'}`;
+        document.getElementById('job-summary').innerHTML =
+          `<span class="font-medium">${result.job_posting_company}</span> / ${result.job_posting_role}`;
+
+        // Matches
+        document.getElementById('matches-list').innerHTML = result.experience_matches
+          .sort((a, b) => a.priority - b.priority)
+          .map(m => `
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs font-bold text-white bg-emerald-500 rounded-full w-5 h-5 flex items-center justify-center">${m.priority}</span>
+                <span class="font-medium text-slate-800 text-sm">${m.skill_or_experience}</span>
+              </div>
+              <p class="text-xs text-slate-600 leading-relaxed">${m.relevance_reason}</p>
+            </div>
+          `).join('');
+
+        // Questions
+        document.getElementById('questions-list').innerHTML = result.interview_questions.map((q, i) => `
+          <details class="border border-slate-200 rounded-lg overflow-hidden">
+            <summary class="p-4 text-sm font-medium text-slate-800 cursor-pointer hover:bg-slate-50 flex items-start gap-2">
+              <span class="text-emerald-500 font-bold shrink-0">Q${i + 1}.</span>
+              <span>${q.question}</span>
+            </summary>
+            <div class="px-4 pb-4 pt-2 bg-slate-50 border-t border-slate-100">
+              <p class="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">${q.answer_example}</p>
+              ${q.experience_used && q.experience_used.length ? `
+                <div class="mt-2 flex flex-wrap gap-1">
+                  ${q.experience_used.map(e => `<span class="text-xs bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full">${e}</span>`).join('')}
+                </div>
+              ` : ''}
+            </div>
+          </details>
+        `).join('');
+
+        // Gap
+        document.getElementById('gap-text').textContent = result.gap_analysis;
+
+        showTab('matches');
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      // --- Tabs ---
+
+      function showTab(name) {
+        ['matches', 'questions', 'gap'].forEach(t => {
+          document.getElementById(`tab-content-${t}`).classList.toggle('hidden', t !== name);
+          const btn = document.getElementById(`tab-${t}`);
+          btn.className = t === name
+            ? 'flex-1 py-3 text-sm font-medium text-emerald-600 border-b-2 border-emerald-600'
+            : 'flex-1 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 border-b-2 border-transparent';
+        });
+      }
+
+      // --- History ---
+
+      async function loadHistory() {
+        const key = getApiKey();
+        if (!key) return;
+        const el = document.getElementById('history-list');
+        try {
+          const res = await fetch('/resume/jobs', { headers: { 'X-API-KEY': key } });
+          if (!res.ok) { el.textContent = '取得に失敗しました'; return; }
+          const list = await res.json();
+          if (!list.length) { el.textContent = 'まだ分析結果がありません'; return; }
+          el.innerHTML = list.map(item => {
+            const date = new Date(item.created_at).toLocaleString('ja-JP');
+            const score = Math.round(item.overall_fit_score * 100);
+            const color = score >= 70 ? 'text-green-600' : score >= 50 ? 'text-yellow-500' : 'text-red-500';
+            return `
+              <div class="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors" onclick="loadJobDetail('${item.job_id}')">
+                <div>
+                  <div class="font-medium text-slate-700">${item.job_posting_company}</div>
+                  <div class="text-xs text-slate-400">${item.job_posting_role} · ${date}</div>
+                </div>
+                <div class="font-bold ${color}">${score}%</div>
+              </div>
+            `;
+          }).join('');
+        } catch {
+          el.textContent = '接続エラーです';
+        }
+      }
+
+      async function loadJobDetail(jobId) {
+        const key = getApiKey();
+        try {
+          const res = await fetch(`/resume/jobs/${jobId}`, { headers: { 'X-API-KEY': key } });
+          if (res.ok) {
+            renderResult(await res.json());
+          } else {
+            showToast('取得に失敗しました', 'error');
+          }
+        } catch {
+          showToast('接続エラーが発生しました', 'error');
+        }
+      }
+
+      // --- Toast ---
+
+      function showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        const bg = type === 'success' ? 'bg-green-600' : 'bg-red-600';
+        toast.className = `${bg} text-white px-5 py-3 rounded-lg shadow-lg transform transition-all duration-300 translate-y-4 opacity-0 text-sm`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => toast.classList.remove('translate-y-4', 'opacity-0'), 50);
+        setTimeout(() => {
+          toast.classList.add('opacity-0');
+          setTimeout(() => toast.remove(), 300);
+        }, 3000);
+      }
+    </script>
+  </body>
+</html>

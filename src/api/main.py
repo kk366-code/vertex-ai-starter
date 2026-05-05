@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 from src.api.auth import verify_api_key
 from src.api.jobs import router as jobs_router
+from src.api.resume import router as resume_router
 from src.api.strengths import router as strengths_router
 from src.core.ai import GeminiCore
 from src.core.bigquery import bq_manager
@@ -40,6 +41,7 @@ app.add_middleware(
 
 app.include_router(strengths_router)
 app.include_router(jobs_router)
+app.include_router(resume_router)
 
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -195,6 +197,11 @@ async def index(request: Request):
 @app.get("/agent", response_class=HTMLResponse)
 async def agent(request: Request):
     return templates.TemplateResponse("agent.html", {"request": request})
+
+
+@app.get("/resume", response_class=HTMLResponse)
+async def resume(request: Request):
+    return templates.TemplateResponse("resume.html", {"request": request})
 
 
 @app.post("/upload", response_class=HTMLResponse)
