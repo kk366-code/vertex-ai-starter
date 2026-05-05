@@ -141,10 +141,16 @@
           <div>
             <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">企業説明 PDF（複数可）</label>
             <input id="cp-pdf-files" type="file" accept="application/pdf" multiple class="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100" />
+            <p id="cp-pdf-info" class="hidden text-xs text-slate-400 mt-1"></p>
           </div>
-          <button onclick="createCompanyProfile()" id="cp-create-btn" class="w-full bg-sky-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-sky-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors">
-            企業プロフィールを作成する
-          </button>
+          <div class="flex gap-2">
+            <button onclick="submitCompanyProfile()" id="cp-create-btn" class="flex-1 bg-sky-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-sky-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors">
+              企業プロフィールを作成する
+            </button>
+            <button onclick="cancelEditCompany()" id="cp-cancel-btn" class="hidden bg-slate-100 text-slate-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors">
+              キャンセル
+            </button>
+          </div>
           <div id="cp-progress" class="hidden text-sm text-sky-600 text-center">⏳ URLを取得・AI統合中... (30〜60秒かかります)</div>
         </div>
       </div>
@@ -273,6 +279,7 @@
       let currentMode = 'text';
       let selectedCompanyProfileId = null;
       let selectedCompanyName = null;
+      let editingCompanyId = null;
 
       // --- API Key ---
 
@@ -350,20 +357,27 @@
           el.innerHTML = list.map(item => {
             const date = new Date(item.created_at).toLocaleString('ja-JP');
             const name = item.company_name || '（企業名未設定）';
+            const safeName = escHtml(name).replace(/'/g, "\\'");
             const isSelected = item.company_id === selectedCompanyProfileId;
             const urlCount = (item.tech_blog_urls?.length || 0) + (item.employee_interview_urls?.length || 0) + (item.hiring_page_url ? 1 : 0);
             const pdfCount = item.pdf_gcs_uris?.length || 0;
             const sources = [urlCount && `URL×${urlCount}`, pdfCount && `PDF×${pdfCount}`, item.free_text && 'テキスト'].filter(Boolean).join(' / ');
             return `
-              <div class="flex items-center justify-between p-3 rounded-lg border ${isSelected ? 'border-sky-400 bg-sky-50' : 'border-slate-100 hover:bg-slate-50'} transition-colors">
-                <div>
-                  <div class="font-medium text-slate-700 text-sm">${escHtml(name)}</div>
-                  <div class="text-xs text-slate-400">${sources} · ${date}</div>
+              <div class="p-3 rounded-lg border ${isSelected ? 'border-sky-400 bg-sky-50' : 'border-slate-100 hover:bg-slate-50'} transition-colors">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="font-medium text-slate-700 text-sm">${escHtml(name)}</div>
+                    <div class="text-xs text-slate-400">${sources} · ${date}</div>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0 ml-2">
+                    ${isSelected
+                      ? '<span class="text-xs font-semibold text-sky-600 bg-sky-100 px-2 py-1 rounded-full">使用中</span>'
+                      : `<button onclick="selectCompanyProfile('${item.company_id}', '${safeName}')" class="text-xs bg-sky-600 text-white px-3 py-1 rounded-lg hover:bg-sky-700 transition-colors">使用する</button>`
+                    }
+                    <button onclick="startEditCompanyProfile('${item.company_id}')" class="text-xs text-slate-500 hover:text-sky-600 px-2 py-1 rounded-lg hover:bg-sky-50 transition-colors">編集</button>
+                    <button onclick="deleteCompanyProfile('${item.company_id}', '${safeName}')" class="text-xs text-slate-400 hover:text-red-500 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors">削除</button>
+                  </div>
                 </div>
-                ${isSelected
-                  ? '<span class="text-xs font-semibold text-sky-600 bg-sky-100 px-2 py-1 rounded-full">使用中</span>'
-                  : `<button onclick="selectCompanyProfile('${item.company_id}', '${escHtml(name).replace(/'/g, "\\'")}\')" class="text-xs bg-sky-600 text-white px-3 py-1 rounded-lg hover:bg-sky-700 transition-colors">使用する</button>`
-                }
               </div>
             `;
           }).join('');
@@ -372,7 +386,73 @@
         }
       }
 
-      async function createCompanyProfile() {
+      function cancelEditCompany() {
+        editingCompanyId = null;
+        document.getElementById('cp-create-btn').textContent = '企業プロフィールを作成する';
+        document.getElementById('cp-cancel-btn').classList.add('hidden');
+        document.getElementById('cp-pdf-info').classList.add('hidden');
+        document.getElementById('cp-company-name').value = '';
+        document.getElementById('cp-hiring-url').value = '';
+        document.getElementById('cp-tech-blog-urls').value = '';
+        document.getElementById('cp-interview-urls').value = '';
+        document.getElementById('cp-free-text').value = '';
+        document.getElementById('cp-pdf-files').value = '';
+        const form = document.getElementById('company-form');
+        if (!form.classList.contains('hidden')) toggleCompanyForm();
+      }
+
+      async function startEditCompanyProfile(companyId) {
+        const key = getApiKey();
+        try {
+          const res = await fetch(`/resume/company-profiles/${companyId}`, { headers: { 'X-API-KEY': key } });
+          if (!res.ok) { showToast('取得に失敗しました', 'error'); return; }
+          const p = await res.json();
+          editingCompanyId = companyId;
+          document.getElementById('cp-company-name').value = p.company_name || '';
+          document.getElementById('cp-hiring-url').value = p.hiring_page_url || '';
+          document.getElementById('cp-tech-blog-urls').value = (p.tech_blog_urls || []).join('\n');
+          document.getElementById('cp-interview-urls').value = (p.employee_interview_urls || []).join('\n');
+          document.getElementById('cp-free-text').value = p.free_text || '';
+          document.getElementById('cp-pdf-files').value = '';
+          const pdfInfo = document.getElementById('cp-pdf-info');
+          if (p.pdf_gcs_uris && p.pdf_gcs_uris.length) {
+            pdfInfo.textContent = `現在 ${p.pdf_gcs_uris.length}個のPDFが登録済み（新たにアップロードすると差し替えます）`;
+            pdfInfo.classList.remove('hidden');
+          } else {
+            pdfInfo.classList.add('hidden');
+          }
+          document.getElementById('cp-create-btn').textContent = '更新する';
+          document.getElementById('cp-cancel-btn').classList.remove('hidden');
+          const form = document.getElementById('company-form');
+          if (form.classList.contains('hidden')) toggleCompanyForm();
+          document.getElementById('company-profile-section').scrollIntoView({ behavior: 'smooth' });
+        } catch {
+          showToast('接続エラーが発生しました', 'error');
+        }
+      }
+
+      async function deleteCompanyProfile(companyId, companyName) {
+        if (!confirm(`「${companyName}」のプロフィールを削除しますか？`)) return;
+        const key = getApiKey();
+        try {
+          const res = await fetch(`/resume/company-profiles/${companyId}`, {
+            method: 'DELETE',
+            headers: { 'X-API-KEY': key },
+          });
+          if (res.ok) {
+            if (selectedCompanyProfileId === companyId) clearSelectedCompany();
+            if (editingCompanyId === companyId) cancelEditCompany();
+            showToast('削除しました');
+            await loadCompanyProfiles();
+          } else {
+            showToast('削除に失敗しました', 'error');
+          }
+        } catch {
+          showToast('接続エラーが発生しました', 'error');
+        }
+      }
+
+      async function submitCompanyProfile() {
         const key = getApiKey();
         if (!key) return showToast('APIキーを保存してください', 'error');
 
@@ -384,7 +464,7 @@
         const freeText = document.getElementById('cp-free-text').value.trim();
         const pdfFiles = document.getElementById('cp-pdf-files').files;
 
-        if (!hiringUrl && !techBlogUrls && !interviewUrls && !freeText && !pdfFiles.length) {
+        if (!editingCompanyId && !hiringUrl && !techBlogUrls && !interviewUrls && !freeText && !pdfFiles.length) {
           return showToast('情報源を1つ以上入力してください', 'error');
         }
 
@@ -395,31 +475,28 @@
         if (freeText) formData.append('free_text', freeText);
         for (const f of pdfFiles) formData.append('pdf_files', f);
 
+        const isEdit = !!editingCompanyId;
+        const endpoint = isEdit ? `/resume/company-profiles/${editingCompanyId}` : '/resume/company-profiles';
+        const method = isEdit ? 'PATCH' : 'POST';
+
         const btn = document.getElementById('cp-create-btn');
         const progress = document.getElementById('cp-progress');
         btn.disabled = true;
         progress.classList.remove('hidden');
 
         try {
-          const res = await fetch('/resume/company-profiles', {
-            method: 'POST',
-            headers: { 'X-API-KEY': key },
-            body: formData,
-          });
+          const res = await fetch(endpoint, { method, headers: { 'X-API-KEY': key }, body: formData });
           if (res.ok) {
             const profile = await res.json();
-            showToast(`「${profile.company_name || '企業'}」のプロフィールを作成しました ✨`);
-            document.getElementById('cp-company-name').value = '';
-            document.getElementById('cp-hiring-url').value = '';
-            document.getElementById('cp-tech-blog-urls').value = '';
-            document.getElementById('cp-interview-urls').value = '';
-            document.getElementById('cp-free-text').value = '';
-            document.getElementById('cp-pdf-files').value = '';
-            toggleCompanyForm();
+            const msg = isEdit
+              ? `「${profile.company_name || '企業'}」のプロフィールを更新しました ✨`
+              : `「${profile.company_name || '企業'}」のプロフィールを作成しました ✨`;
+            showToast(msg);
+            cancelEditCompany();
             await loadCompanyProfiles();
           } else {
             const err = await res.json();
-            showToast(err.detail || '作成に失敗しました', 'error');
+            showToast(err.detail || (isEdit ? '更新に失敗しました' : '作成に失敗しました'), 'error');
           }
         } catch {
           showToast('接続エラーが発生しました', 'error');

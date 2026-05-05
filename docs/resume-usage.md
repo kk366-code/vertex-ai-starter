@@ -195,26 +195,36 @@ curl "http://localhost:8000/resume/company-profiles" \
 curl "http://localhost:8000/resume/company-profiles/{company_id}" \
   -H "X-API-KEY: ${INTERNAL_API_KEY}"
 ```
-curl -X POST "http://localhost:8000/resume/personal-profile" \
+
+### 企業プロフィールの更新
+
+URLの追加・削除、テキストの変更後にAI統合をやり直します。
+**PDFを送らない場合は既存PDFを維持**し、既存の統合情報も引き継いで再集約します。
+
+```bash
+# 社員インタビューURLを追加・差し替え
+curl -X PATCH "http://localhost:8000/resume/company-profiles/{company_id}" \
   -H "X-API-KEY: ${INTERNAL_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "values": ["自律と信頼", "学び続けること"],
-    "influential_items": ["ティール組織（組織観が変わった）", "〇〇さん（元上司）"],
-    "career_vision": "プロダクト全体を技術で支えるCTOになりたい",
-    "work_style": "裁量を持って自律的に動けるチームが理想",
-    "episodes": [
-      {
-        "title": "チームを立て直した経験",
-        "situation": "リリース直前に主要メンバーが離脱し、3人で対応することになった",
-        "task": "残ったメンバーで工数を再配分し、スコープを絞りながらリリースを守る",
-        "action": "毎朝15分の同期MTGを設け、優先度をその場で決め直すフローを導入した",
-        "result": "予定通りリリースでき、その後もそのフローが組織の標準になった"
-      }
-    ]
-  }'
+  -F "employee_interview_urls_text=https://wantedly.com/article1
+https://wantedly.com/article2
+https://wantedly.com/article3"
+
+# フリーテキストだけ更新（他のフィールドは空欄にすると既存情報で再集約）
+curl -X PATCH "http://localhost:8000/resume/company-profiles/{company_id}" \
+  -H "X-API-KEY: ${INTERNAL_API_KEY}" \
+  -F "free_text=説明会で追加メモ: 〇〇チームは週3出社が基本..."
 ```
 
+> [!NOTE]
+> Web UIでは「編集」ボタンをクリックすると現在の値がフォームにセットされます。
+> 変更したいURLを追加・削除して「更新する」で送信してください。
+
+### 企業プロフィールの削除
+
+```bash
+curl -X DELETE "http://localhost:8000/resume/company-profiles/{company_id}" \
+  -H "X-API-KEY: ${INTERNAL_API_KEY}"
+```
 
 ---
 
