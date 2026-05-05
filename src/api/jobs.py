@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
@@ -198,6 +199,19 @@ async def create_job_analysis(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"求人ページへの接続に失敗しました: {e}",
             ) from e
+
+        # HTMLタグを除去して本文テキストを抽出し、内容が十分かチェック
+        visible_text = re.sub(r"<[^>]+>", " ", raw_text)
+        visible_text = re.sub(r"\s+", " ", visible_text).strip()
+        if len(visible_text) < 200:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "このサイトでは求人情報を取得できませんでした。"
+                    "JavaScriptで描画されるページ、またはログインが必要なページの可能性があります。"
+                    "求人ページのテキストをコピーして「テキスト入力」でお試しください。"
+                ),
+            )
     else:
         raw_text = text  # type: ignore[assignment]
 

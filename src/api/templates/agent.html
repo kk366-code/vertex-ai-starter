@@ -104,6 +104,13 @@
           分析を実行
         </button>
 
+        <!-- Error Message -->
+        <div id="analyze-error" class="hidden mt-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <p class="text-sm font-semibold text-amber-800 mb-1">⚠️ このサイトでは取得できません</p>
+          <p id="analyze-error-detail" class="text-xs text-amber-700 leading-relaxed"></p>
+          <button onclick="setInputMode('text')" class="mt-2 text-xs text-blue-600 underline">→ テキスト入力に切り替える</button>
+        </div>
+
         <!-- Progress Steps -->
         <div id="analysis-progress" class="hidden mt-4">
           <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
@@ -294,8 +301,10 @@
 
         const btn = document.getElementById('analyze-btn');
         const progressSection = document.getElementById('analysis-progress');
+        const errorBox = document.getElementById('analyze-error');
         btn.disabled = true;
         progressSection.classList.remove('hidden');
+        errorBox.classList.add('hidden');
         document.getElementById('result-section').classList.add('hidden');
 
         startProgressAnimation();
@@ -316,7 +325,13 @@
             await loadHistory();
           } else {
             const err = await res.json();
-            showToast(err.detail || '分析に失敗しました', 'error');
+            const detail = err.detail || '分析に失敗しました';
+            if (res.status === 422 && currentMode === 'url') {
+              document.getElementById('analyze-error-detail').textContent = detail;
+              errorBox.classList.remove('hidden');
+            } else {
+              showToast(detail, 'error');
+            }
           }
         } catch {
           stopProgressAnimation(false);
