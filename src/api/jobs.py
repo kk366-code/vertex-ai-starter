@@ -16,6 +16,7 @@ from src.core.strengths_schema import (
     StrengthMatch,
     StrengthMatchList,
     StrengthsProfile,
+    _JobPostingExtract,
 )
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -34,8 +35,7 @@ def _build_job_extraction_prompt(raw_text: str) -> str:
         "- required_skills: 必須・歓迎スキルを個別の文字列リストとして抽出してください\n"
         "- desired_person: 求める人物像・マインドセット・"
         "カルチャーフィットの記述を統合してください\n"
-        "- culture: 会社の文化・働き方・環境に関する記述をまとめてください\n"
-        "- raw_text: 以下の原文テキストをそのまま設定してください\n\n"
+        "- culture: 会社の文化・働き方・環境に関する記述をまとめてください\n\n"
         f"## 求人情報\n{raw_text}"
     )
 
@@ -112,11 +112,12 @@ def _build_gap_prompt(
 
 async def _run_pipeline(raw_text: str) -> JobAnalysisResult:
     """マルチステップエージェントパイプライン"""
-    # Step 2: 求人情報の構造化抽出
-    job_posting = await _ai_core.analyze_text(
+    # Step 2: 求人情報の構造化抽出（raw_textはGeminiに出力させず直接セット）
+    extracted = await _ai_core.analyze_text(
         prompt=_build_job_extraction_prompt(raw_text),
-        response_schema=JobPosting,
+        response_schema=_JobPostingExtract,
     )
+    job_posting = JobPosting(**extracted.model_dump(), raw_text=raw_text)
 
     # Step 3: StrengthsProfile をFirestoreから読み込み
     profile = await firestore_manager.get_strengths_profile()

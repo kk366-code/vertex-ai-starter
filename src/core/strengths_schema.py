@@ -25,6 +25,20 @@ class StrengthsProfile(BaseModel):
     )
 
 
+class _JobPostingExtract(BaseModel):
+    """Gemini抽出用の内部スキーマ（raw_textを含まない）"""
+
+    company_name: str = Field(description="企業名。例: 'Google Japan'")
+    role: str = Field(
+        description="求人の職種・役職名。例: 'ソフトウェアエンジニア（バックエンド）'"
+    )
+    required_skills: list[str] = Field(
+        description="必須・歓迎スキルのリスト。例: ['Python', 'SQL', 'システム設計']"
+    )
+    desired_person: str = Field(description="求める人物像・人柄・マインドセットの説明（日本語）")
+    culture: str = Field(description="企業文化・職場環境・働き方の説明（日本語）")
+
+
 class JobPosting(BaseModel):
     """求人情報の構造化データ"""
 
