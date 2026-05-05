@@ -192,6 +192,11 @@ async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
+@app.get("/agent", response_class=HTMLResponse)
+async def agent(request: Request):
+    return templates.TemplateResponse("agent.html", {"request": request})
+
+
 @app.post("/upload", response_class=HTMLResponse)
 async def handle_upload(
     request: Request,
