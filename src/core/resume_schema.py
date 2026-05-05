@@ -147,3 +147,40 @@ class ResumeJobAnalysisResult(BaseModel):
         le=1.0,
     )
     created_at: str = Field(description="分析実行日時（ISO 8601形式）")
+    company_profile_id: str | None = Field(
+        default=None, description="使用した企業プロフィールID（任意）"
+    )
+
+
+class _CompanyPdfExtract(BaseModel):
+    """企業PDF資料からのテキスト抽出用内部スキーマ"""
+
+    content: str = Field(
+        description="PDF資料から抽出した全内容。企業名・事業・文化・技術・価値観など全情報を網羅すること"
+    )
+
+
+class _CompanyInfoSummary(BaseModel):
+    """企業情報統合の内部スキーマ"""
+
+    company_name: str = Field(description="情報ソースから特定した企業名（不明な場合は '不明'）")
+    combined_company_info: str = Field(
+        description="複数ソースを統合した企業プロフィール（1000〜2000字）。"
+        "ミッション・事業内容・技術文化・求める人物像・職場環境等を含む"
+    )
+
+
+class CompanyProfile(BaseModel):
+    """複数ソースから収集・統合した企業プロフィール"""
+
+    company_id: str = Field(description="企業プロフィールの一意ID（UUID hex形式）")
+    company_name: str | None = Field(default=None, description="企業名")
+    hiring_page_url: str | None = Field(default=None, description="採用ページURL")
+    tech_blog_urls: list[str] = Field(default=[], description="技術ブログURLリスト")
+    employee_interview_urls: list[str] = Field(
+        default=[], description="社員インタビューURLリスト"
+    )
+    free_text: str | None = Field(default=None, description="その他自由記述（企業情報補足）")
+    pdf_gcs_uris: list[str] = Field(default=[], description="企業説明PDFのGCS URIリスト")
+    combined_company_info: str = Field(default="", description="AI統合済み企業プロフィールテキスト")
+    created_at: str = Field(description="作成日時（ISO 8601形式）")

@@ -1,7 +1,12 @@
 from google.cloud import firestore
 
 from src.core.config import settings
-from src.core.resume_schema import PersonalProfile, ResumeJobAnalysisResult, ResumeProfile
+from src.core.resume_schema import (
+    CompanyProfile,
+    PersonalProfile,
+    ResumeJobAnalysisResult,
+    ResumeProfile,
+)
 from src.core.strengths_schema import JobAnalysisResult, StrengthsProfile
 
 _COLLECTION_PROFILE = "strengths_profiles"
@@ -9,6 +14,7 @@ _COLLECTION_JOBS = "job_analyses"
 _COLLECTION_RESUME_PROFILE = "resume_profiles"
 _COLLECTION_RESUME_JOBS = "resume_job_analyses"
 _COLLECTION_PERSONAL_PROFILE = "personal_profiles"
+_COLLECTION_COMPANY_PROFILES = "company_profiles"
 _PROFILE_DOC_ID = "current"
 
 
@@ -96,6 +102,27 @@ class FirestoreManager:
         if not snapshot.exists:
             return None
         return PersonalProfile.model_validate(snapshot.to_dict())
+
+    async def save_company_profile(self, profile: CompanyProfile) -> str:
+        doc_ref = self.client.collection(_COLLECTION_COMPANY_PROFILES).document(profile.company_id)
+        await doc_ref.set(profile.model_dump())
+        return profile.company_id
+
+    async def get_company_profile(self, company_id: str) -> CompanyProfile | None:
+        doc_ref = self.client.collection(_COLLECTION_COMPANY_PROFILES).document(company_id)
+        snapshot = await doc_ref.get()
+        if not snapshot.exists:
+            return None
+        return CompanyProfile.model_validate(snapshot.to_dict())
+
+    async def list_company_profiles(self) -> list[CompanyProfile]:
+        query = self.client.collection(_COLLECTION_COMPANY_PROFILES).order_by(
+            "created_at", direction=firestore.Query.DESCENDING
+        )
+        results: list[CompanyProfile] = []
+        async for doc in query.stream():
+            results.append(CompanyProfile.model_validate(doc.to_dict()))
+        return results
 
 
 firestore_manager = FirestoreManager()
