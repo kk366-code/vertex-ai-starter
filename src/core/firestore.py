@@ -1,6 +1,7 @@
 from google.cloud import firestore
 
 from src.core.config import settings
+from src.core.pdf_schema import PdfTextResult
 from src.core.resume_schema import (
     CompanyProfile,
     PersonalProfile,
@@ -15,6 +16,7 @@ _COLLECTION_RESUME_PROFILE = "resume_profiles"
 _COLLECTION_RESUME_JOBS = "resume_job_analyses"
 _COLLECTION_PERSONAL_PROFILE = "personal_profiles"
 _COLLECTION_COMPANY_PROFILES = "company_profiles"
+_COLLECTION_PDF_TEXTS = "pdf_texts"
 _PROFILE_DOC_ID = "current"
 
 
@@ -127,6 +129,18 @@ class FirestoreManager:
     async def delete_company_profile(self, company_id: str) -> None:
         doc_ref = self.client.collection(_COLLECTION_COMPANY_PROFILES).document(company_id)
         await doc_ref.delete()
+
+    async def save_pdf_text(self, result: PdfTextResult) -> str:
+        doc_ref = self.client.collection(_COLLECTION_PDF_TEXTS).document(result.id)
+        await doc_ref.set(result.model_dump())
+        return result.id
+
+    async def get_pdf_text(self, doc_id: str) -> PdfTextResult | None:
+        doc_ref = self.client.collection(_COLLECTION_PDF_TEXTS).document(doc_id)
+        snapshot = await doc_ref.get()
+        if not snapshot.exists:
+            return None
+        return PdfTextResult.model_validate(snapshot.to_dict())
 
 
 firestore_manager = FirestoreManager()
