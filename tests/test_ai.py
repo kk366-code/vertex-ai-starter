@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from src.core.ai import GeminiCore
-from src.core.schema import AnalysisResult
+from src.core.schema import AnalysisResult, DetectedObject
 
 
 async def test_analyze_text_success(mocker):
@@ -14,7 +14,7 @@ async def test_analyze_text_success(mocker):
     mock_response = mocker.MagicMock()
     mock_response.text = (
         '{"success": true, "description": "テスト成功", '
-        '"objects": ["test"], "confidence_score": 0.9}'
+        '"objects": [{"name": "test", "count": 1}], "confidence_score": 0.9}'
     )
 
     # 3. インスタンスのメソッドを直接モックに差し替え
@@ -50,7 +50,7 @@ async def test_analyze_text_success(mocker):
 
     # データの同一性検証 (List Equality Check):
     # objectsフィールドのリストが期待通りであるかを確認
-    assert result.objects == ["test"]
+    assert result.objects == [DetectedObject(name="test", count=1)]
 
     # メソッドが呼ばれたかどうかも確認できる
     mock_method.assert_called_once()
