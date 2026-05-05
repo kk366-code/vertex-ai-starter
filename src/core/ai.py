@@ -20,6 +20,22 @@ class GeminiCore:
         self.client = genai.Client(vertexai=True, project=project_id, location=location)
         self.model_id = "gemini-2.5-flash"
 
+    async def analyze_file_simple(self, prompt: str, gcs_uri: str, mime_type: str) -> str:
+        """GCS上のファイルをプレーンテキストで解析して返す。"""
+        parts: list[genai.types.Part] = [
+            genai.types.Part.from_uri(file_uri=gcs_uri, mime_type=mime_type),
+            genai.types.Part.from_text(text=prompt),
+        ]
+        contents = genai.types.UserContent(parts)
+        response = await self.client.aio.models.generate_content(
+            model=self.model_id,
+            contents=contents,
+            config=genai.types.GenerateContentConfig(temperature=0.1),
+        )
+        if response.text is None:
+            raise ValueError("Geminiからのレスポンスが空でした。")
+        return response.text
+
     async def analyze_text_simple(self, prompt: str) -> str:
         """テキスト専用の解析。スキーマに縛られず、自由な文字列で回答する"""
         full_prompt = f"あなたは親切なAIアシスタントです。以下の問いに答えてください。\n{prompt}"
