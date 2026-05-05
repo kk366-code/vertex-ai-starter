@@ -104,11 +104,61 @@
         </div>
       </div>
 
+      <!-- Step 1.7: 企業プロフィール -->
+      <div id="company-profile-section" class="bg-white rounded-xl shadow-sm border border-sky-100 p-6 mb-6">
+        <div class="flex items-center gap-3 mb-1">
+          <span class="bg-sky-600 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">🏢</span>
+          <h2 class="font-semibold text-slate-800">企業プロフィール</h2>
+          <span class="text-xs text-slate-400 ml-1">任意・複数ソースで企業を深掘りします</span>
+        </div>
+
+        <div id="company-profiles-list" class="mb-3 space-y-2 text-sm text-slate-500">読み込み中...</div>
+
+        <button onclick="toggleCompanyForm()" id="company-toggle-btn" class="text-sm text-sky-600 hover:underline mb-4 block">▼ 新しい企業プロフィールを作成</button>
+
+        <div id="company-form" class="hidden space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">企業名（任意・AIが推定します）</label>
+            <input id="cp-company-name" type="text" placeholder="例: 株式会社〇〇（省略可）" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">採用ページ URL</label>
+            <input id="cp-hiring-url" type="url" placeholder="https://company.com/careers" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400" />
+            <p class="text-xs text-amber-600 mt-1">⚠️ ログイン必須・JS動的描画のページは取得できない場合があります。</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">技術ブログ URL（1行1つ）</label>
+            <textarea id="cp-tech-blog-urls" rows="3" placeholder="https://tech.company.com/posts/1&#10;https://tech.company.com/posts/2" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 resize-none"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">社員インタビュー URL（1行1つ）</label>
+            <textarea id="cp-interview-urls" rows="3" placeholder="https://company.com/interview/engineer1&#10;https://wantedly.com/..." class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 resize-none"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">その他フリーテキスト</label>
+            <textarea id="cp-free-text" rows="4" placeholder="会社説明会でのメモ、LinkedInの会社概要、プレスリリースなど..." class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 resize-none"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">企業説明 PDF（複数可）</label>
+            <input id="cp-pdf-files" type="file" accept="application/pdf" multiple class="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100" />
+          </div>
+          <button onclick="createCompanyProfile()" id="cp-create-btn" class="w-full bg-sky-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-sky-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors">
+            企業プロフィールを作成する
+          </button>
+          <div id="cp-progress" class="hidden text-sm text-sky-600 text-center">⏳ URLを取得・AI統合中... (30〜60秒かかります)</div>
+        </div>
+      </div>
+
       <!-- Step 2 -->
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
         <div class="flex items-center gap-3 mb-4">
           <span class="bg-emerald-600 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">2</span>
           <h2 class="font-semibold text-slate-800">求人分析の実行</h2>
+        </div>
+
+        <div id="step2-company-banner" class="hidden mb-4 p-3 rounded-lg bg-sky-50 border border-sky-200 flex items-center justify-between">
+          <span class="text-sm text-sky-700">🏢 企業プロフィール使用中: <span id="step2-company-name" class="font-semibold"></span></span>
+          <button onclick="clearSelectedCompany()" class="text-xs text-slate-400 hover:text-red-500 transition-colors">解除</button>
         </div>
 
         <div class="mb-4">
@@ -221,6 +271,8 @@
 
     <script>
       let currentMode = 'text';
+      let selectedCompanyProfileId = null;
+      let selectedCompanyName = null;
 
       // --- API Key ---
 
@@ -232,6 +284,7 @@
         showToast('APIキーを保存しました');
         loadProfile();
         loadPersonalProfile();
+        loadCompanyProfiles();
         loadHistory();
       }
 
@@ -246,13 +299,135 @@
           document.getElementById('api-key-status').textContent = '✓ 保存済み';
           loadProfile();
           loadPersonalProfile();
+          loadCompanyProfiles();
           loadHistory();
         } else {
           document.getElementById('profile-status').textContent = 'APIキーを入力して保存してください';
           document.getElementById('personal-profile-status').textContent = 'APIキーを入力して保存してください';
+          document.getElementById('company-profiles-list').textContent = 'APIキーを入力して保存してください';
           document.getElementById('history-list').textContent = 'APIキーを入力して保存してください';
         }
       });
+
+      // --- Company Profile ---
+
+      function toggleCompanyForm() {
+        const form = document.getElementById('company-form');
+        const btn = document.getElementById('company-toggle-btn');
+        const isHidden = form.classList.contains('hidden');
+        form.classList.toggle('hidden', !isHidden);
+        btn.textContent = isHidden ? '▲ 閉じる' : '▼ 新しい企業プロフィールを作成';
+      }
+
+      function selectCompanyProfile(companyId, companyName) {
+        selectedCompanyProfileId = companyId;
+        selectedCompanyName = companyName;
+        document.getElementById('step2-company-banner').classList.remove('hidden');
+        document.getElementById('step2-company-name').textContent = companyName;
+        showToast(`「${companyName}」のプロフィールを使用します`);
+        loadCompanyProfiles();
+      }
+
+      function clearSelectedCompany() {
+        selectedCompanyProfileId = null;
+        selectedCompanyName = null;
+        document.getElementById('step2-company-banner').classList.add('hidden');
+        loadCompanyProfiles();
+      }
+
+      async function loadCompanyProfiles() {
+        const key = getApiKey();
+        if (!key) return;
+        const el = document.getElementById('company-profiles-list');
+        try {
+          const res = await fetch('/resume/company-profiles', { headers: { 'X-API-KEY': key } });
+          if (!res.ok) { el.textContent = '取得に失敗しました'; return; }
+          const list = await res.json();
+          if (!list.length) {
+            el.innerHTML = '<p class="text-xs text-slate-400">まだ企業プロフィールがありません。「新しい企業プロフィールを作成」から追加してください。</p>';
+            return;
+          }
+          el.innerHTML = list.map(item => {
+            const date = new Date(item.created_at).toLocaleString('ja-JP');
+            const name = item.company_name || '（企業名未設定）';
+            const isSelected = item.company_id === selectedCompanyProfileId;
+            const urlCount = (item.tech_blog_urls?.length || 0) + (item.employee_interview_urls?.length || 0) + (item.hiring_page_url ? 1 : 0);
+            const pdfCount = item.pdf_gcs_uris?.length || 0;
+            const sources = [urlCount && `URL×${urlCount}`, pdfCount && `PDF×${pdfCount}`, item.free_text && 'テキスト'].filter(Boolean).join(' / ');
+            return `
+              <div class="flex items-center justify-between p-3 rounded-lg border ${isSelected ? 'border-sky-400 bg-sky-50' : 'border-slate-100 hover:bg-slate-50'} transition-colors">
+                <div>
+                  <div class="font-medium text-slate-700 text-sm">${escHtml(name)}</div>
+                  <div class="text-xs text-slate-400">${sources} · ${date}</div>
+                </div>
+                ${isSelected
+                  ? '<span class="text-xs font-semibold text-sky-600 bg-sky-100 px-2 py-1 rounded-full">使用中</span>'
+                  : `<button onclick="selectCompanyProfile('${item.company_id}', '${escHtml(name).replace(/'/g, "\\'")}\')" class="text-xs bg-sky-600 text-white px-3 py-1 rounded-lg hover:bg-sky-700 transition-colors">使用する</button>`
+                }
+              </div>
+            `;
+          }).join('');
+        } catch {
+          el.textContent = '接続エラーです';
+        }
+      }
+
+      async function createCompanyProfile() {
+        const key = getApiKey();
+        if (!key) return showToast('APIキーを保存してください', 'error');
+
+        const formData = new FormData();
+        const companyName = document.getElementById('cp-company-name').value.trim();
+        const hiringUrl = document.getElementById('cp-hiring-url').value.trim();
+        const techBlogUrls = document.getElementById('cp-tech-blog-urls').value.trim();
+        const interviewUrls = document.getElementById('cp-interview-urls').value.trim();
+        const freeText = document.getElementById('cp-free-text').value.trim();
+        const pdfFiles = document.getElementById('cp-pdf-files').files;
+
+        if (!hiringUrl && !techBlogUrls && !interviewUrls && !freeText && !pdfFiles.length) {
+          return showToast('情報源を1つ以上入力してください', 'error');
+        }
+
+        if (companyName) formData.append('company_name', companyName);
+        if (hiringUrl) formData.append('hiring_page_url', hiringUrl);
+        if (techBlogUrls) formData.append('tech_blog_urls_text', techBlogUrls);
+        if (interviewUrls) formData.append('employee_interview_urls_text', interviewUrls);
+        if (freeText) formData.append('free_text', freeText);
+        for (const f of pdfFiles) formData.append('pdf_files', f);
+
+        const btn = document.getElementById('cp-create-btn');
+        const progress = document.getElementById('cp-progress');
+        btn.disabled = true;
+        progress.classList.remove('hidden');
+
+        try {
+          const res = await fetch('/resume/company-profiles', {
+            method: 'POST',
+            headers: { 'X-API-KEY': key },
+            body: formData,
+          });
+          if (res.ok) {
+            const profile = await res.json();
+            showToast(`「${profile.company_name || '企業'}」のプロフィールを作成しました ✨`);
+            document.getElementById('cp-company-name').value = '';
+            document.getElementById('cp-hiring-url').value = '';
+            document.getElementById('cp-tech-blog-urls').value = '';
+            document.getElementById('cp-interview-urls').value = '';
+            document.getElementById('cp-free-text').value = '';
+            document.getElementById('cp-pdf-files').value = '';
+            toggleCompanyForm();
+            await loadCompanyProfiles();
+          } else {
+            const err = await res.json();
+            showToast(err.detail || '作成に失敗しました', 'error');
+          }
+        } catch {
+          showToast('接続エラーが発生しました', 'error');
+        } finally {
+          btn.disabled = false;
+          progress.classList.add('hidden');
+        }
+      }
 
       // --- Input Mode ---
 
@@ -446,6 +621,9 @@
           const url = document.getElementById('job-url').value.trim();
           if (!url) return showToast('URLを入力してください', 'error');
           formData.append('url', url);
+        }
+        if (selectedCompanyProfileId) {
+          formData.append('company_profile_id', selectedCompanyProfileId);
         }
 
         const btn = document.getElementById('analyze-btn');

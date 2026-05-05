@@ -6,9 +6,9 @@
 ## 機能概要
 
 ```
-あなたの職務経歴書PDF  +  企業の求人情報
+あなたの職務経歴書PDF  +  企業の求人情報  [+  企業プロフィール（任意）]
           ↓
-  Geminiを4回呼び出すパイプライン
+  Geminiを4〜N回呼び出すパイプライン
           ↓
   ① 求人情報の構造化抽出
   ② 職務経歴とのマッチング分析（スキル・経験ベース）
@@ -16,6 +16,20 @@
   ④ ギャップ分析 + 総合適合スコア
           ↓
   Firestoreに保存（後から何度でも参照可）
+```
+
+### 企業プロフィール機能（追加機能）
+
+求人票1枚だけでなく、複数ソースから企業情報を集めてAIが統合します。
+一度作成した企業プロフィールは複数の求人分析で使い回せます。
+
+```
+採用ページURL + 技術ブログURL（複数）+ 社員インタビューURL + フリーテキスト + PDF資料
+          ↓
+  Geminiが全ソースを統合 → 企業プロフィール（Firestoreに保存）
+          ↓
+  求人分析パイプラインに自動注入
+  → マッチング・Q&A・ギャップ分析が企業文化・技術スタックを考慮した精度に向上
 ```
 
 ---
@@ -83,6 +97,69 @@ curl "http://localhost:8000/resume/profile" \
 
 ---
 
+## Step 1.7: 企業プロフィールの作成（任意・推奨）
+
+求人票だけでは得られない企業情報を複数ソースから収集し、AIが統合したプロフィールを作成します。
+**一度作成すれば、同じ企業への複数の求人分析で使い回せます。**
+
+### Web UIで操作する場合（推奨）
+
+1. 「企業プロフィール」セクションの「新しい企業プロフィールを作成」をクリック
+2. 以下の情報を入力（最低1つ必須）:
+   - **採用ページ URL**: 企業の採用トップページなど
+   - **技術ブログ URL**: エンジニアブログの記事URLを1行1つで複数入力
+   - **社員インタビュー URL**: Wantedly・1on1記事など
+   - **フリーテキスト**: 会社説明会のメモ、LinkedInの概要など
+   - **企業説明 PDF**: 会社説明スライド（複数可）
+3. 「企業プロフィールを作成する」をクリック（30〜60秒かかります）
+4. 作成されたプロフィールが一覧に表示されたら「使用する」をクリック
+5. Step 2の求人分析で自動的に企業プロフィールが注入される
+
+> [!IMPORTANT]
+> ログインが必要なページ、JavaScriptで動的に描画されるページはURLからの取得に失敗します。
+> その場合はテキストをコピーして「フリーテキスト」に貼り付けてください。
+
+### curlで操作する場合
+
+```bash
+# テキストのみで企業プロフィールを作成
+curl -X POST "http://localhost:8000/resume/company-profiles" \
+  -H "X-API-KEY: ${INTERNAL_API_KEY}" \
+  -F "company_name=○○株式会社" \
+  -F "free_text=〇〇株式会社はBtoBのSaaS企業で、エンジニアは自律的に動くことが求められる..."
+
+# URLを指定して企業プロフィールを作成
+curl -X POST "http://localhost:8000/resume/company-profiles" \
+  -H "X-API-KEY: ${INTERNAL_API_KEY}" \
+  -F "hiring_page_url=https://company.com/careers" \
+  -F "tech_blog_urls_text=https://tech.company.com/entry/1
+https://tech.company.com/entry/2" \
+  -F "employee_interview_urls_text=https://wantedly.com/..."
+
+# PDFも組み合わせる
+curl -X POST "http://localhost:8000/resume/company-profiles" \
+  -H "X-API-KEY: ${INTERNAL_API_KEY}" \
+  -F "company_name=○○株式会社" \
+  -F "pdf_files=@/path/to/company_deck.pdf" \
+  -F "free_text=補足メモ..."
+```
+
+### 企業プロフィール一覧の取得
+
+```bash
+curl "http://localhost:8000/resume/company-profiles" \
+  -H "X-API-KEY: ${INTERNAL_API_KEY}"
+```
+
+### 特定の企業プロフィールの取得
+
+```bash
+curl "http://localhost:8000/resume/company-profiles/{company_id}" \
+  -H "X-API-KEY: ${INTERNAL_API_KEY}"
+```
+
+---
+
 ## Step 2: 求人分析の実行
 
 求人情報を投げると、AIエージェントが4段階の分析を順番に実行します。
@@ -101,18 +178,9 @@ curl "http://localhost:8000/resume/profile" \
 ### curlで操作する場合（テキスト）
 
 ```bash
-# 求人テキストをファイルに保存してから送る
-cat > /tmp/job.txt << 'EOF'
-企業名: ○○株式会社
-職種: バックエンドエンジニア
-必須スキル: Python, FastAPI, SQL
-求める人物像: 自律的に動ける方
-（求人ページからコピーしたテキストをそのまま貼り付ける）
-EOF
-
 curl -X POST "http://localhost:8000/resume/jobs" \
   -H "X-API-KEY: ${INTERNAL_API_KEY}" \
-  -F "text=</tmp/job.txt"
+  -F "text=企業名: ○○株式会社 職種: バックエンドエンジニア 必須スキル: Python, FastAPI..."
 ```
 
 ### curlで操作する場合（URL）
@@ -121,6 +189,16 @@ curl -X POST "http://localhost:8000/resume/jobs" \
 curl -X POST "http://localhost:8000/resume/jobs" \
   -H "X-API-KEY: ${INTERNAL_API_KEY}" \
   -F "url=https://example.com/jobs/12345"
+```
+
+### 企業プロフィールを使って分析する場合
+
+```bash
+# 先に企業プロフィールを作成してcompany_idを取得しておく
+curl -X POST "http://localhost:8000/resume/jobs" \
+  -H "X-API-KEY: ${INTERNAL_API_KEY}" \
+  -F "text=（求人テキスト）" \
+  -F "company_profile_id=a3f9b2c1..."
 ```
 
 > [!IMPORTANT]
@@ -187,10 +265,15 @@ curl "http://localhost:8000/resume/jobs/{job_id}" \
 ```
 (default) データベース
 ├── resume_profiles/
-│   └── current           ← 職務経歴書プロフィール（1ドキュメント固定）
+│   └── current                  ← 職務経歴書プロフィール（1ドキュメント固定）
+├── personal_profiles/
+│   └── current                  ← パーソナルプロフィール（1ドキュメント固定）
+├── company_profiles/
+│   ├── a3f9b2c1...              ← 企業プロフィール（企業ごと）
+│   └── d7e4f0a2...
 └── resume_job_analyses/
-    ├── a3f9b2c1...       ← 求人分析結果（企業ごと）
-    └── d7e4f0a2...
+    ├── c1e5f9b3...              ← 求人分析結果（求人ごと）
+    └── f2a7d4c8...
 ```
 
 ---
