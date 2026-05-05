@@ -62,6 +62,48 @@
         <div id="upload-progress" class="hidden mt-3 text-sm text-emerald-600">⏳ 職務経歴書を解析中... (30秒ほどかかります)</div>
       </div>
 
+      <!-- Step 1.5: パーソナルプロフィール -->
+      <div class="bg-white rounded-xl shadow-sm border border-violet-100 p-6 mb-6">
+        <div class="flex items-center gap-3 mb-1">
+          <span class="bg-violet-600 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">★</span>
+          <h2 class="font-semibold text-slate-800">パーソナルプロフィール</h2>
+          <span class="text-xs text-slate-400 ml-1">任意・登録すると面接Q&Aがより「あなたらしく」なります</span>
+        </div>
+
+        <div id="personal-profile-status" class="mb-3 p-3 rounded-lg bg-slate-50 border border-slate-100 text-sm text-slate-500">
+          読み込み中...
+        </div>
+
+        <button onclick="togglePersonalForm()" id="personal-toggle-btn" class="text-sm text-violet-600 hover:underline mb-4 block">▼ 編集する</button>
+
+        <div id="personal-form" class="hidden space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">価値観・信条</label>
+            <textarea id="pp-values" rows="3" placeholder="1行に1つ入力&#10;例: 自律と信頼&#10;例: 学び続けること" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">影響を受けた本・人</label>
+            <textarea id="pp-influential" rows="3" placeholder="1行に1つ入力&#10;例: ティール組織（組織観が変わった）&#10;例: 〇〇さん（元上司）" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">キャリアビジョン</label>
+            <textarea id="pp-vision" rows="3" placeholder="5年後・10年後にどうなりたいか..." class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">働き方の好み</label>
+            <textarea id="pp-workstyle" rows="2" placeholder="リモート・裁量・チームのあり方など..." class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none"></textarea>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide">印象的なエピソード（STAR形式）</label>
+              <button onclick="addEpisode()" class="text-xs bg-violet-50 text-violet-700 px-3 py-1 rounded-lg hover:bg-violet-100 transition-colors">+ 追加</button>
+            </div>
+            <div id="episodes-container" class="space-y-3"></div>
+          </div>
+          <button onclick="savePersonalProfile()" class="w-full bg-violet-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-violet-700 transition-colors">保存する</button>
+        </div>
+      </div>
+
       <!-- Step 2 -->
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
         <div class="flex items-center gap-3 mb-4">
@@ -189,6 +231,7 @@
         document.getElementById('api-key-status').textContent = '✓ 保存しました';
         showToast('APIキーを保存しました');
         loadProfile();
+        loadPersonalProfile();
         loadHistory();
       }
 
@@ -202,9 +245,11 @@
           document.getElementById('api-key-input').value = saved;
           document.getElementById('api-key-status').textContent = '✓ 保存済み';
           loadProfile();
+          loadPersonalProfile();
           loadHistory();
         } else {
           document.getElementById('profile-status').textContent = 'APIキーを入力して保存してください';
+          document.getElementById('personal-profile-status').textContent = 'APIキーを入力して保存してください';
           document.getElementById('history-list').textContent = 'APIキーを入力して保存してください';
         }
       });
@@ -217,6 +262,108 @@
         document.getElementById('url-input-area').classList.toggle('hidden', mode !== 'url');
         document.getElementById('mode-text').className = `flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${mode === 'text' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'}`;
         document.getElementById('mode-url').className = `flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${mode === 'url' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'}`;
+      }
+
+      // --- Personal Profile ---
+
+      let episodes = [];
+
+      function togglePersonalForm() {
+        const form = document.getElementById('personal-form');
+        const btn = document.getElementById('personal-toggle-btn');
+        const isHidden = form.classList.contains('hidden');
+        form.classList.toggle('hidden', !isHidden);
+        btn.textContent = isHidden ? '▲ 閉じる' : '▼ 編集する';
+      }
+
+      async function loadPersonalProfile() {
+        const key = getApiKey();
+        if (!key) return;
+        const el = document.getElementById('personal-profile-status');
+        try {
+          const res = await fetch('/resume/personal-profile', { headers: { 'X-API-KEY': key } });
+          if (res.ok) {
+            const profile = await res.json();
+            document.getElementById('pp-values').value = profile.values.join('\n');
+            document.getElementById('pp-influential').value = profile.influential_items.join('\n');
+            document.getElementById('pp-vision').value = profile.career_vision;
+            document.getElementById('pp-workstyle').value = profile.work_style;
+            episodes = profile.episodes || [];
+            renderEpisodes();
+            const valStr = profile.values.slice(0, 3).join(' / ');
+            const more = profile.values.length > 3 ? '...' : '';
+            el.innerHTML = `<span class="text-violet-700 font-medium">✓ 登録済み</span><span class="text-slate-400 text-xs ml-2">${escHtml(valStr)}${more}</span>`;
+          } else if (res.status === 404) {
+            el.textContent = '未登録（任意）。登録すると面接Q&Aがより「あなたらしく」なります。';
+          } else {
+            el.textContent = '取得に失敗しました。';
+          }
+        } catch {
+          el.textContent = '接続エラーです。';
+        }
+      }
+
+      async function savePersonalProfile() {
+        const key = getApiKey();
+        if (!key) return showToast('APIキーを保存してください', 'error');
+        const values = document.getElementById('pp-values').value.split('\n').map(s => s.trim()).filter(Boolean);
+        const influential_items = document.getElementById('pp-influential').value.split('\n').map(s => s.trim()).filter(Boolean);
+        const career_vision = document.getElementById('pp-vision').value.trim();
+        const work_style = document.getElementById('pp-workstyle').value.trim();
+        const payload = { values, influential_items, episodes, career_vision, work_style };
+        try {
+          const res = await fetch('/resume/personal-profile', {
+            method: 'POST',
+            headers: { 'X-API-KEY': key, 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (res.ok) {
+            showToast('パーソナルプロフィールを保存しました ✨');
+            await loadPersonalProfile();
+          } else {
+            const err = await res.json();
+            showToast(err.detail || '保存に失敗しました', 'error');
+          }
+        } catch {
+          showToast('接続エラーが発生しました', 'error');
+        }
+      }
+
+      function renderEpisodes() {
+        const container = document.getElementById('episodes-container');
+        if (!episodes.length) {
+          container.innerHTML = '<p class="text-xs text-slate-400">エピソードがまだありません。「+ 追加」で追加してください。</p>';
+          return;
+        }
+        container.innerHTML = episodes.map((ep, i) => `
+          <div class="border border-slate-200 rounded-lg p-3 space-y-2 bg-slate-50">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-600">エピソード ${i + 1}</span>
+              <button onclick="removeEpisode(${i})" class="text-xs text-red-400 hover:text-red-600">削除</button>
+            </div>
+            <input type="text" value="${escHtml(ep.title)}" oninput="episodes[${i}].title=this.value" placeholder="タイトル（例: チームを立て直した経験）" class="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-violet-400" />
+            <textarea oninput="episodes[${i}].situation=this.value" rows="2" placeholder="S: 状況・背景" class="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-violet-400 resize-none">${escHtml(ep.situation)}</textarea>
+            <textarea oninput="episodes[${i}].task=this.value" rows="2" placeholder="T: 課題・自分の役割" class="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-violet-400 resize-none">${escHtml(ep.task)}</textarea>
+            <textarea oninput="episodes[${i}].action=this.value" rows="2" placeholder="A: 取った行動" class="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-violet-400 resize-none">${escHtml(ep.action)}</textarea>
+            <textarea oninput="episodes[${i}].result=this.value" rows="2" placeholder="R: 結果・学び" class="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-violet-400 resize-none">${escHtml(ep.result)}</textarea>
+          </div>
+        `).join('');
+      }
+
+      function addEpisode() {
+        episodes.push({ title: '', situation: '', task: '', action: '', result: '' });
+        renderEpisodes();
+        const form = document.getElementById('personal-form');
+        if (form.classList.contains('hidden')) togglePersonalForm();
+      }
+
+      function removeEpisode(i) {
+        episodes.splice(i, 1);
+        renderEpisodes();
+      }
+
+      function escHtml(str) {
+        return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
       }
 
       // --- Profile ---

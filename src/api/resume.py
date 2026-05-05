@@ -14,6 +14,7 @@ from src.core.ai import GeminiCore
 from src.core.firestore import firestore_manager
 from src.core.resume_schema import (
     ExperienceMatchList,
+    PersonalProfile,
     ResumeGapAnalysisResult,
     ResumeInterviewQuestionList,
     ResumeJobAnalysisResult,
@@ -64,17 +65,27 @@ def _build_matching_prompt(
     job_desired: str,
     job_culture: str,
     profile: ResumeProfile,
+    personal: PersonalProfile | None = None,
 ) -> str:
     skills_summary = "、".join(profile.skills)
     exp_summary = "\n".join(
         f"- {e.company}（{e.role}、{e.period}）: {e.description}" for e in profile.work_experiences
     )
+    personal_section = ""
+    if personal and (personal.values or personal.career_vision):
+        values_str = "、".join(personal.values) if personal.values else "（未設定）"
+        personal_section = (
+            f"\n## 求職者のパーソナリティ\n"
+            f"価値観: {values_str}\n"
+            f"キャリアビジョン: {personal.career_vision}\n"
+        )
     return (
         "あなたはキャリアコンサルタントです。求職者の職務経歴と求人要件を照合し、"
         "各スキル・経験が求人にどう活かせるかを具体的に分析してください。\n\n"
         f"## 求職者のスキル\n{skills_summary}\n\n"
-        f"## 職歴\n{exp_summary}\n\n"
-        "## 求人情報\n"
+        f"## 職歴\n{exp_summary}\n"
+        + personal_section
+        + "\n## 求人情報\n"
         f"企業: {job_company}\n"
         f"役職: {job_role}\n"
         f"必須スキル: {', '.join(job_skills)}\n"
@@ -90,23 +101,45 @@ def _build_questions_prompt(
     job_role: str,
     profile: ResumeProfile,
     matches: list,
+    personal: PersonalProfile | None = None,
 ) -> str:
     match_summary = "\n".join(
         f"- {m.skill_or_experience}（優先度{m.priority}）: {m.relevance_reason}"
         for m in sorted(matches, key=lambda x: x.priority)
     )
+    personal_section = ""
+    if personal:
+        values_str = "、".join(personal.values) if personal.values else "（未設定）"
+        items_str = (
+            "、".join(personal.influential_items) if personal.influential_items else "（未設定）"
+        )
+        personal_section = (
+            f"\n## 求職者のパーソナリティ\n"
+            f"価値観: {values_str}\n"
+            f"影響を受けた本・人: {items_str}\n"
+            f"キャリアビジョン: {personal.career_vision}\n"
+            f"働き方の好み: {personal.work_style}\n"
+        )
+        if personal.episodes:
+            episodes_str = "\n".join(
+                f"  【{ep.title}】 S:{ep.situation} / T:{ep.task} / A:{ep.action} / R:{ep.result}"
+                for ep in personal.episodes
+            )
+            personal_section += f"\n印象的なエピソード（STAR形式）:\n{episodes_str}\n"
     return (
         "あなたは経験豊富な面接コーチです。\n"
         "以下の求人と職務経歴のマッチング結果をもとに、"
         "この企業の面接で実際に聞かれそうな質問を5〜8件生成してください。\n"
         "各質問に対し、求職者の具体的な職務経歴・実績を活かしたSTAR形式の"
         "回答例（200字以上）を作成してください。\n\n"
-        f"## 求職者サマリー\n{profile.summary}\n\n"
-        f"## 求人\n企業: {job_company} / 役職: {job_role}\n\n"
+        f"## 求職者サマリー\n{profile.summary}\n"
+        + personal_section
+        + f"\n## 求人\n企業: {job_company} / 役職: {job_role}\n\n"
         f"## スキル・経験のマッチング\n{match_summary}\n\n"
         "## 注意事項\n"
         "- 行動面接質問（「〜した経験を教えてください」形式）を優先してください\n"
         "- 具体的な実績・数字を盛り込んだ回答例にしてください\n"
+        "- パーソナルプロフィールがある場合は価値観・エピソードを回答例に自然に反映させてください\n"
         "- experience_usedには実際に回答で言及した職歴・スキルの名称のみ含めてください"
     )
 
@@ -118,15 +151,20 @@ def _build_gap_prompt(
     job_desired: str,
     profile: ResumeProfile,
     matches: list,
+    personal: PersonalProfile | None = None,
 ) -> str:
     match_summary = "\n".join(
         f"- {m.skill_or_experience}: {m.relevance_reason}" for m in matches
     )
+    personal_section = ""
+    if personal and personal.career_vision:
+        personal_section = f"\n## 求職者のキャリアビジョン\n{personal.career_vision}\n"
     return (
         "求職者の職務経歴と求人要件を比較し、ギャップ分析を行ってください。\n\n"
         f"## 求職者スキル\n{', '.join(profile.skills)}\n\n"
-        f"## 職務経歴サマリー\n{profile.summary}\n\n"
-        f"## 求人必須スキル\n{', '.join(job_skills)}\n\n"
+        f"## 職務経歴サマリー\n{profile.summary}\n"
+        + personal_section
+        + f"\n## 求人必須スキル\n{', '.join(job_skills)}\n\n"
         f"## 求人の求める人物像\n{job_desired}\n\n"
         f"## マッチしたスキル・経験\n{match_summary}\n\n"
         "## 指示\n"
@@ -140,7 +178,9 @@ def _build_gap_prompt(
 # --- パイプライン ---
 
 
-async def _run_pipeline(raw_text: str, profile: ResumeProfile) -> ResumeJobAnalysisResult:
+async def _run_pipeline(
+    raw_text: str, profile: ResumeProfile, personal: PersonalProfile | None = None
+) -> ResumeJobAnalysisResult:
     # Step 1: 求人情報の構造化抽出
     job = await _ai_core.analyze_text(
         prompt=_build_job_extraction_prompt(raw_text),
@@ -151,14 +191,16 @@ async def _run_pipeline(raw_text: str, profile: ResumeProfile) -> ResumeJobAnaly
     match_list = await _ai_core.analyze_text(
         prompt=_build_matching_prompt(
             job.company_name, job.role, job.required_skills,
-            job.desired_person, job.culture, profile,
+            job.desired_person, job.culture, profile, personal,
         ),
         response_schema=ExperienceMatchList,
     )
 
     # Step 3: 想定面接質問と回答例の生成
     question_list = await _ai_core.analyze_text(
-        prompt=_build_questions_prompt(job.company_name, job.role, profile, match_list.items),
+        prompt=_build_questions_prompt(
+            job.company_name, job.role, profile, match_list.items, personal
+        ),
         response_schema=ResumeInterviewQuestionList,
     )
 
@@ -166,7 +208,7 @@ async def _run_pipeline(raw_text: str, profile: ResumeProfile) -> ResumeJobAnaly
     gap_result = await _ai_core.analyze_text(
         prompt=_build_gap_prompt(
             job.company_name, job.role, job.required_skills,
-            job.desired_person, profile, match_list.items,
+            job.desired_person, profile, match_list.items, personal,
         ),
         response_schema=ResumeGapAnalysisResult,
     )
@@ -242,6 +284,32 @@ async def get_resume_profile(
     return profile
 
 
+@router.post(
+    "/personal-profile", response_model=PersonalProfile, status_code=status.HTTP_201_CREATED
+)
+async def upsert_personal_profile(
+    profile: PersonalProfile,
+    api_key: Annotated[str, Security(verify_api_key)],
+) -> PersonalProfile:
+    """パーソナルプロフィール（価値観・エピソード等）を登録・更新してFirestoreに保存する"""
+    await firestore_manager.save_personal_profile(profile)
+    return profile
+
+
+@router.get("/personal-profile", response_model=PersonalProfile)
+async def get_personal_profile(
+    api_key: Annotated[str, Security(verify_api_key)],
+) -> PersonalProfile:
+    """Firestoreに保存済みのパーソナルプロフィールを取得する"""
+    profile = await firestore_manager.get_personal_profile()
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="パーソナルプロフィールが未登録です。",
+        )
+    return profile
+
+
 @router.post("/jobs", response_model=ResumeJobAnalysisResult, status_code=status.HTTP_201_CREATED)
 async def create_resume_job_analysis(
     api_key: Annotated[str, Security(verify_api_key)],
@@ -302,7 +370,8 @@ async def create_resume_job_analysis(
     else:
         raw_text = text  # type: ignore[assignment]
 
-    result = await _run_pipeline(raw_text, profile)
+    personal = await firestore_manager.get_personal_profile()
+    result = await _run_pipeline(raw_text, profile, personal)
     await firestore_manager.save_resume_job_analysis(result)
     return result
 
