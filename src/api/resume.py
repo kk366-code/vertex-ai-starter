@@ -613,3 +613,137 @@ async def get_company_profile(
             detail=f"company_id '{company_id}' が見つかりません。",
         )
     return profile
+
+
+@router.patch("/company-profiles/{company_id}", response_model=CompanyProfile)
+async def update_company_profile(
+    company_id: str,
+    api_key: Annotated[str, Security(verify_api_key)],
+    company_name: Annotated[
+        str | None, Form(description="企業名（省略可・AIが推定）")
+    ] = None,
+    hiring_page_url: Annotated[
+        str | None, Form(description="採用ページURL")
+    ] = None,
+    tech_blog_urls_text: Annotated[
+        str | None, Form(description="技術ブログURL（1行1つ）")
+    ] = None,
+    employee_interview_urls_text: Annotated[
+        str | None, Form(description="社員インタビューURL（1行1つ）")
+    ] = None,
+    free_text: Annotated[
+        str | None, Form(description="その他フリーテキスト")
+    ] = None,
+    pdf_files: Annotated[
+        list[UploadFile] | None, File(description="企業説明PDF（複数可・送信すると差し替え）")
+    ] = None,
+) -> CompanyProfile:
+    """企業プロフィールのソースを更新してAI統合をやり直す。PDFを送らない場合は既存PDFを維持する。"""
+    existing = await firestore_manager.get_company_profile(company_id)
+    if existing is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"company_id '{company_id}' が見つかりません。",
+        )
+
+    tech_blog_urls = [u.strip() for u in (tech_blog_urls_text or "").splitlines() if u.strip()]
+    employee_interview_urls = [
+        u.strip() for u in (employee_interview_urls_text or "").splitlines() if u.strip()
+    ]
+    pdf_files = pdf_files or []
+
+    # URLを並列フェッチ
+    all_urls: list[tuple[str, str]] = []
+    if hiring_page_url:
+        all_urls.append(("採用ページ", hiring_page_url))
+    for i, url in enumerate(tech_blog_urls, 1):
+        all_urls.append((f"技術ブログ {i}", url))
+    for i, url in enumerate(employee_interview_urls, 1):
+        all_urls.append((f"社員インタビュー {i}", url))
+
+    sources: dict[str, str] = {}
+    if all_urls:
+        fetch_results = await asyncio.gather(
+            *[_fetch_url_text(url) for _, url in all_urls], return_exceptions=True
+        )
+        for (label, _), result in zip(all_urls, fetch_results, strict=False):
+            if isinstance(result, str) and result:
+                sources[label] = result[:3000]
+
+    # PDFを処理（新規アップロードがあれば差し替え、なければ既存情報を引き継ぐ）
+    if pdf_files:
+        pdf_gcs_uris: list[str] = []
+        upload_root = Path("upload")
+        upload_root.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=upload_root) as tmp_dir:
+            for i, pdf_file in enumerate(pdf_files, 1):
+                tmp_path = Path(tmp_dir) / (pdf_file.filename or f"company_{i}.pdf")
+                with tmp_path.open("wb") as buf:
+                    shutil.copyfileobj(pdf_file.file, buf)
+                storage = CloudStorageManager()
+                gcs_uri = await storage.upload_file_async(str(tmp_path))
+                pdf_gcs_uris.append(gcs_uri)
+                try:
+                    extracted = await _ai_core.analyze_image(
+                        prompt=(
+                            "この企業資料のすべての内容を詳細に抽出してください。"
+                            "企業名・事業内容・文化・技術・価値観など全情報を含めてください。"
+                        ),
+                        gcs_uri=gcs_uri,
+                        response_schema=_CompanyPdfExtract,
+                        mime_type="application/pdf",
+                    )
+                    if extracted.content:
+                        sources[f"企業PDF資料 {i}"] = extracted.content[:3000]
+                except Exception:
+                    pass
+    else:
+        # 既存PDFを維持し、既存の統合情報をソースの一つとして引き継ぐ
+        pdf_gcs_uris = existing.pdf_gcs_uris
+        if existing.combined_company_info:
+            sources["既存の統合企業情報"] = existing.combined_company_info[:3000]
+
+    if free_text and free_text.strip():
+        sources["フリーテキスト"] = free_text.strip()[:3000]
+
+    if not sources:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="情報源が空です。URLまたはテキストを入力してください。",
+        )
+
+    summary = await _ai_core.analyze_text(
+        prompt=_build_company_aggregation_prompt(sources),
+        response_schema=_CompanyInfoSummary,
+    )
+
+    updated = CompanyProfile(
+        company_id=company_id,
+        company_name=company_name or (
+            summary.company_name if summary.company_name != "不明" else existing.company_name
+        ),
+        hiring_page_url=hiring_page_url,
+        tech_blog_urls=tech_blog_urls,
+        employee_interview_urls=employee_interview_urls,
+        free_text=free_text,
+        pdf_gcs_uris=pdf_gcs_uris,
+        combined_company_info=summary.combined_company_info,
+        created_at=existing.created_at,
+    )
+    await firestore_manager.save_company_profile(updated)
+    return updated
+
+
+@router.delete("/company-profiles/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_company_profile(
+    company_id: str,
+    api_key: Annotated[str, Security(verify_api_key)],
+) -> None:
+    """指定した company_id の企業プロフィールを削除する"""
+    existing = await firestore_manager.get_company_profile(company_id)
+    if existing is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"company_id '{company_id}' が見つかりません。",
+        )
+    await firestore_manager.delete_company_profile(company_id)

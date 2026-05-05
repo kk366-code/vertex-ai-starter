@@ -124,5 +124,9 @@ class FirestoreManager:
             results.append(CompanyProfile.model_validate(doc.to_dict()))
         return results
 
+    async def delete_company_profile(self, company_id: str) -> None:
+        doc_ref = self.client.collection(_COLLECTION_COMPANY_PROFILES).document(company_id)
+        await doc_ref.delete()
+
 
 firestore_manager = FirestoreManager()
