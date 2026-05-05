@@ -1261,3 +1261,11 @@ gcloud run services update $SERVICE_NAME `
 gcloud run services update gemini-analysis-api --min-instances 1 --region asia-northeast1
 
 ```
+
+---
+
+## 📖 機能ドキュメント
+
+| ドキュメント | 内容 |
+| --- | --- |
+| [docs/agent-usage.md](docs/agent-usage.md) | AIエージェント機能（StrengthsFinderと求人分析）の使い方 |
