@@ -39,6 +39,11 @@
   - `tempfile.TemporaryDirectory(dir=Path("upload"))` を使用し、作業完了後（またはエラー時）に自動削除されるように設計する。
   - 元ファイルを破壊・削除しないよう、パスの分離を徹底する。
 
+## 📝 Git Commit Convention
+
+- **タイトル（1行目）**: 英語で記述する。例: `feat: add agent UI`, `fix: handle empty URL response`
+- **本文（3行目以降）**: 日本語で記述する。何を・なぜ変えたかを説明する。
+
 ## ⚠️ Important Environment Variables
 
 - `GOOGLE_CLOUD_PROJECT`: Google CloudのプロジェクトID（必須）。
