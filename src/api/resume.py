@@ -124,9 +124,7 @@ def _build_matching_prompt(
         "あなたはキャリアコンサルタントです。求職者の職務経歴と求人要件を照合し、"
         "各スキル・経験が求人にどう活かせるかを具体的に分析してください。\n\n"
         f"## 求職者のスキル\n{skills_summary}\n\n"
-        f"## 職歴\n{exp_summary}\n"
-        + personal_section
-        + "\n## 求人情報\n"
+        f"## 職歴\n{exp_summary}\n" + personal_section + "\n## 求人情報\n"
         f"企業: {job_company}\n"
         f"役職: {job_role}\n"
         f"必須スキル: {', '.join(job_skills)}\n"
@@ -204,9 +202,7 @@ def _build_gap_prompt(
     personal: PersonalProfile | None = None,
     company_info: str | None = None,
 ) -> str:
-    match_summary = "\n".join(
-        f"- {m.skill_or_experience}: {m.relevance_reason}" for m in matches
-    )
+    match_summary = "\n".join(f"- {m.skill_or_experience}: {m.relevance_reason}" for m in matches)
     personal_section = ""
     if personal and personal.career_vision:
         personal_section = f"\n## 求職者のキャリアビジョン\n{personal.career_vision}\n"
@@ -251,8 +247,14 @@ async def _run_pipeline(
     # Step 2: スキル・経験のマッチング分析
     match_list = await _ai_core.analyze_text(
         prompt=_build_matching_prompt(
-            job.company_name, job.role, job.required_skills,
-            job.desired_person, job.culture, profile, personal, company_info,
+            job.company_name,
+            job.role,
+            job.required_skills,
+            job.desired_person,
+            job.culture,
+            profile,
+            personal,
+            company_info,
         ),
         response_schema=ExperienceMatchList,
     )
@@ -268,8 +270,14 @@ async def _run_pipeline(
     # Step 4: ギャップ分析とフィットスコア算出
     gap_result = await _ai_core.analyze_text(
         prompt=_build_gap_prompt(
-            job.company_name, job.role, job.required_skills,
-            job.desired_person, profile, match_list.items, personal, company_info,
+            job.company_name,
+            job.role,
+            job.required_skills,
+            job.desired_person,
+            profile,
+            match_list.items,
+            personal,
+            company_info,
         ),
         response_schema=ResumeGapAnalysisResult,
     )
@@ -480,12 +488,8 @@ async def create_company_profile(
     company_name: Annotated[
         str | None, Form(description="企業名（省略可・AIが情報から推定）")
     ] = None,
-    hiring_page_url: Annotated[
-        str | None, Form(description="採用ページURL")
-    ] = None,
-    tech_blog_urls_text: Annotated[
-        str | None, Form(description="技術ブログURL（1行1つ）")
-    ] = None,
+    hiring_page_url: Annotated[str | None, Form(description="採用ページURL")] = None,
+    tech_blog_urls_text: Annotated[str | None, Form(description="技術ブログURL（1行1つ）")] = None,
     employee_interview_urls_text: Annotated[
         str | None, Form(description="社員インタビューURL（1行1つ）")
     ] = None,
@@ -503,9 +507,9 @@ async def create_company_profile(
     ]
     pdf_files = pdf_files or []
 
-    has_any_source = any([
-        hiring_page_url, tech_blog_urls, employee_interview_urls, free_text, pdf_files
-    ])
+    has_any_source = any(
+        [hiring_page_url, tech_blog_urls, employee_interview_urls, free_text, pdf_files]
+    )
     if not has_any_source:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -577,9 +581,8 @@ async def create_company_profile(
 
     profile = CompanyProfile(
         company_id=uuid.uuid4().hex,
-        company_name=company_name or (
-            summary.company_name if summary.company_name != "不明" else None
-        ),
+        company_name=company_name
+        or (summary.company_name if summary.company_name != "不明" else None),
         hiring_page_url=hiring_page_url,
         tech_blog_urls=tech_blog_urls,
         employee_interview_urls=employee_interview_urls,
@@ -619,21 +622,13 @@ async def get_company_profile(
 async def update_company_profile(
     company_id: str,
     api_key: Annotated[str, Security(verify_api_key)],
-    company_name: Annotated[
-        str | None, Form(description="企業名（省略可・AIが推定）")
-    ] = None,
-    hiring_page_url: Annotated[
-        str | None, Form(description="採用ページURL")
-    ] = None,
-    tech_blog_urls_text: Annotated[
-        str | None, Form(description="技術ブログURL（1行1つ）")
-    ] = None,
+    company_name: Annotated[str | None, Form(description="企業名（省略可・AIが推定）")] = None,
+    hiring_page_url: Annotated[str | None, Form(description="採用ページURL")] = None,
+    tech_blog_urls_text: Annotated[str | None, Form(description="技術ブログURL（1行1つ）")] = None,
     employee_interview_urls_text: Annotated[
         str | None, Form(description="社員インタビューURL（1行1つ）")
     ] = None,
-    free_text: Annotated[
-        str | None, Form(description="その他フリーテキスト")
-    ] = None,
+    free_text: Annotated[str | None, Form(description="その他フリーテキスト")] = None,
     pdf_files: Annotated[
         list[UploadFile] | None, File(description="企業説明PDF（複数可・送信すると差し替え）")
     ] = None,
@@ -719,9 +714,8 @@ async def update_company_profile(
 
     updated = CompanyProfile(
         company_id=company_id,
-        company_name=company_name or (
-            summary.company_name if summary.company_name != "不明" else existing.company_name
-        ),
+        company_name=company_name
+        or (summary.company_name if summary.company_name != "不明" else existing.company_name),
         hiring_page_url=hiring_page_url,
         tech_blog_urls=tech_blog_urls,
         employee_interview_urls=employee_interview_urls,
