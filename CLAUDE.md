@@ -12,7 +12,7 @@
 - **App Execution (Main)**: `uv run main.py`
 - **API Execution (FastAPI)**: `uv run uvicorn src.api.main:app --reload`
 - **Testing**: `uv run pytest`
-- **Linting & Formatting**: `uv run ruff check . --fix`
+- **Linting & Formatting**: `uv run ruff format . && uv run ruff check . --fix`
 - **Type Checking**: `uv run mypy .`
 
 ## 📏 Coding Standards (2026 Edition)
