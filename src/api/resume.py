@@ -16,6 +16,8 @@ from src.core.firestore import firestore_manager
 from src.core.resume_schema import (
     CompanyProfile,
     ExperienceMatchList,
+    InterviewChatRequest,
+    InterviewChatResponse,
     PersonalProfile,
     ResumeGapAnalysisResult,
     ResumeInterviewQuestionList,
@@ -190,6 +192,64 @@ def _build_questions_prompt(
         "- パーソナルプロフィールがある場合は価値観・エピソードを回答例に自然に反映させてください\n"
         "- experience_usedには実際に回答で言及した職歴・スキルの名称のみ含めてください\n"
         "- 存在しないエピソードを推測で作り出すことは禁止します"
+    )
+
+
+def _build_chat_prompt(
+    question: str,
+    job: ResumeJobAnalysisResult,
+    profile: ResumeProfile,
+    personal: PersonalProfile | None = None,
+    company_info: str | None = None,
+) -> str:
+    skills_str = "、".join(profile.skills)
+    exp_str = "\n".join(
+        f"- {e.company}（{e.role}、{e.period}）: {e.description}\n"
+        f"  実績: {'; '.join(e.achievements)}"
+        for e in profile.work_experiences
+    )
+    personal_section = ""
+    if personal:
+        values_str = "、".join(personal.values) if personal.values else "（未設定）"
+        items_str = (
+            "、".join(personal.influential_items) if personal.influential_items else "（未設定）"
+        )
+        personal_section = (
+            f"\n## 求職者のパーソナリティ\n"
+            f"価値観: {values_str}\n"
+            f"影響を受けた本・人: {items_str}\n"
+            f"キャリアビジョン: {personal.career_vision}\n"
+            f"働き方の好み: {personal.work_style}\n"
+        )
+        if personal.episodes:
+            eps = "\n".join(
+                f"  【{ep.title}】 S:{ep.situation} / T:{ep.task} / A:{ep.action} / R:{ep.result}"
+                for ep in personal.episodes
+            )
+            personal_section += f"\n印象的なエピソード（STAR形式）:\n{eps}\n"
+    company_section = f"\n## 企業の詳細情報\n{company_info[:2000]}\n" if company_info else ""
+    return (
+        "あなたは経験豊富な面接コーチです。\n"
+        "以下の求職者情報・求人情報・企業情報を踏まえて、"
+        "面接での質問に対する具体的な回答アドバイスを日本語で提供してください。\n\n"
+        f"## 求職者のスキル\n{skills_str}\n\n"
+        f"## 職務経歴\n{exp_str}\n"
+        f"## 職務経歴サマリー\n{profile.summary}\n"
+        + personal_section
+        + f"\n## 応募先企業・求人情報\n"
+        f"企業: {job.job_posting_company}\n"
+        f"役職: {job.job_posting_role}\n"
+        f"必須スキル: {', '.join(job.job_posting_required_skills)}\n"
+        f"求める人物像: {job.job_posting_desired_person}\n"
+        f"企業文化: {job.job_posting_culture}\n"
+        + company_section
+        + f"\n## 面接の質問\n{question}\n\n"
+        "## 回答アドバイスの指示\n"
+        "- 求職者の実際の職務経歴・スキル・エピソードを具体的に活用してください\n"
+        "- STAR形式（Situation/Task/Action/Result）を意識した回答構成を提案してください\n"
+        "- 企業文化・求める人物像に合わせたアピールポイントを盛り込んでください\n"
+        "- 存在しない経験・実績を作り出すことは禁止します\n"
+        "- 回答は300字以上の具体的な内容にしてください"
     )
 
 
@@ -742,3 +802,40 @@ async def delete_company_profile(
             detail=f"company_id '{company_id}' が見つかりません。",
         )
     await firestore_manager.delete_company_profile(company_id)
+
+
+@router.post("/jobs/{job_id}/chat", response_model=InterviewChatResponse)
+async def chat_interview_question(
+    job_id: str,
+    body: InterviewChatRequest,
+    api_key: Annotated[str, Security(verify_api_key)],
+) -> InterviewChatResponse:
+    """面接で聞かれそうな質問に対し、職務経歴・企業情報を踏まえた回答アドバイスをGeminiが生成する"""
+    job = await firestore_manager.get_resume_job_analysis(job_id)
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"job_id '{job_id}' が見つかりません。",
+        )
+
+    profile = await firestore_manager.get_resume_profile()
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "職務経歴書が未登録です。"
+                "先に POST /resume/profile でPDFをアップロードしてください。"
+            ),
+        )
+
+    personal = await firestore_manager.get_personal_profile()
+
+    company_info: str | None = None
+    if job.company_profile_id:
+        company = await firestore_manager.get_company_profile(job.company_profile_id)
+        if company and company.combined_company_info:
+            company_info = company.combined_company_info
+
+    prompt = _build_chat_prompt(body.question, job, profile, personal, company_info)
+    answer = await _ai_core.analyze_text_simple(prompt)
+    return InterviewChatResponse(answer=answer)
