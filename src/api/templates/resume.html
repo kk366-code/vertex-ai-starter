@@ -247,6 +247,7 @@
             <button onclick="showTab('matches')" id="tab-matches" class="flex-1 py-3 text-sm font-medium text-emerald-600 border-b-2 border-emerald-600">経歴マッチング</button>
             <button onclick="showTab('questions')" id="tab-questions" class="flex-1 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 border-b-2 border-transparent">面接Q&A</button>
             <button onclick="showTab('gap')" id="tab-gap" class="flex-1 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 border-b-2 border-transparent">ギャップ分析</button>
+            <button onclick="showTab('chat')" id="tab-chat" class="flex-1 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 border-b-2 border-transparent">💬 チャット</button>
           </div>
 
           <div id="tab-content-matches" class="p-6">
@@ -259,6 +260,47 @@
 
           <div id="tab-content-gap" class="p-6 hidden">
             <p id="gap-text" class="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap"></p>
+          </div>
+
+          <!-- Chat Tab -->
+          <div id="tab-content-chat" class="hidden flex flex-col" style="height: 520px;">
+            <div class="px-4 pt-4 pb-2 border-b border-slate-100">
+              <p class="text-xs text-slate-500 mb-2">よく聞かれる質問から選んで試してみましょう</p>
+              <div class="flex flex-wrap gap-2">
+                <button onclick="sendQuickQuestion('自己紹介をお願いします')" class="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition-colors">自己紹介</button>
+                <button onclick="sendQuickQuestion('志望動機を教えてください')" class="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition-colors">志望動機</button>
+                <button onclick="sendQuickQuestion('あなたの強みと弱みを教えてください')" class="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition-colors">強み・弱み</button>
+                <button onclick="sendQuickQuestion('5年後のキャリアビジョンを教えてください')" class="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition-colors">キャリアビジョン</button>
+                <button onclick="sendQuickQuestion('チームで難しい課題を乗り越えた経験を教えてください')" class="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition-colors">チームの困難</button>
+                <button onclick="sendQuickQuestion('転職理由を教えてください')" class="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition-colors">転職理由</button>
+              </div>
+            </div>
+
+            <div id="chat-messages" class="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-slate-50">
+              <div class="text-center text-xs text-slate-400 py-6">
+                面接で聞かれそうな質問を入力すると、あなたの職務経歴・企業情報を踏まえた回答アドバイスをAIが生成します
+              </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-200 bg-white">
+              <div class="flex gap-2 items-end">
+                <textarea
+                  id="chat-input"
+                  rows="2"
+                  placeholder="例: なぜ弊社を志望したのですか？"
+                  class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none"
+                  onkeydown="handleChatKeydown(event)"
+                ></textarea>
+                <button
+                  onclick="sendChatMessage()"
+                  id="chat-send-btn"
+                  class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors shrink-0"
+                >
+                  送信
+                </button>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Shift+Enter で改行 / Enter で送信</p>
+            </div>
           </div>
         </div>
       </div>
@@ -280,6 +322,7 @@
       let selectedCompanyProfileId = null;
       let selectedCompanyName = null;
       let editingCompanyId = null;
+      let currentJobId = null;
 
       // --- API Key ---
 
@@ -777,6 +820,8 @@
       // --- Render Result ---
 
       function renderResult(result) {
+        currentJobId = result.job_id;
+        resetChat();
         const section = document.getElementById('result-section');
         section.classList.remove('hidden');
 
@@ -830,13 +875,129 @@
       // --- Tabs ---
 
       function showTab(name) {
-        ['matches', 'questions', 'gap'].forEach(t => {
+        ['matches', 'questions', 'gap', 'chat'].forEach(t => {
           document.getElementById(`tab-content-${t}`).classList.toggle('hidden', t !== name);
           const btn = document.getElementById(`tab-${t}`);
           btn.className = t === name
             ? 'flex-1 py-3 text-sm font-medium text-emerald-600 border-b-2 border-emerald-600'
             : 'flex-1 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 border-b-2 border-transparent';
         });
+        if (name === 'chat') {
+          document.getElementById('chat-input').focus();
+        }
+      }
+
+      // --- Interview Chat ---
+
+      function resetChat() {
+        document.getElementById('chat-messages').innerHTML = `
+          <div class="text-center text-xs text-slate-400 py-6">
+            面接で聞かれそうな質問を入力すると、あなたの職務経歴・企業情報を踏まえた回答アドバイスをAIが生成します
+          </div>`;
+        document.getElementById('chat-input').value = '';
+      }
+
+      function handleChatKeydown(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendChatMessage();
+        }
+      }
+
+      function sendQuickQuestion(q) {
+        document.getElementById('chat-input').value = q;
+        sendChatMessage();
+      }
+
+      async function sendChatMessage() {
+        if (!currentJobId) return showToast('先に求人分析を実行してください', 'error');
+        const input = document.getElementById('chat-input');
+        const question = input.value.trim();
+        if (!question) return;
+        const key = getApiKey();
+        if (!key) return showToast('APIキーを保存してください', 'error');
+
+        input.value = '';
+        appendChatMessage('user', question);
+
+        const thinkingId = appendThinkingBubble();
+        const btn = document.getElementById('chat-send-btn');
+        btn.disabled = true;
+
+        try {
+          const res = await fetch(`/resume/jobs/${currentJobId}/chat`, {
+            method: 'POST',
+            headers: { 'X-API-KEY': key, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question }),
+          });
+          removeThinkingBubble(thinkingId);
+          if (res.ok) {
+            const data = await res.json();
+            appendChatMessage('ai', data.answer);
+          } else {
+            const err = await res.json();
+            appendChatMessage('error', err.detail || '回答の生成に失敗しました');
+          }
+        } catch {
+          removeThinkingBubble(thinkingId);
+          appendChatMessage('error', '接続エラーが発生しました');
+        } finally {
+          btn.disabled = false;
+          input.focus();
+        }
+      }
+
+      function appendChatMessage(role, text) {
+        const container = document.getElementById('chat-messages');
+        const placeholder = container.querySelector('.text-center');
+        if (placeholder) placeholder.remove();
+
+        const wrap = document.createElement('div');
+        if (role === 'user') {
+          wrap.className = 'flex justify-end';
+          wrap.innerHTML = `
+            <div class="max-w-xs lg:max-w-md bg-emerald-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed shadow-sm">
+              ${escHtml(text)}
+            </div>`;
+        } else if (role === 'ai') {
+          wrap.className = 'flex justify-start gap-2';
+          wrap.innerHTML = `
+            <div class="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-xs shrink-0 mt-0.5">AI</div>
+            <div class="max-w-xs lg:max-w-md bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-slate-700 leading-relaxed shadow-sm whitespace-pre-wrap">${escHtml(text)}</div>`;
+        } else {
+          wrap.className = 'flex justify-start gap-2';
+          wrap.innerHTML = `
+            <div class="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center text-xs shrink-0 mt-0.5">!</div>
+            <div class="max-w-xs lg:max-w-md bg-red-50 border border-red-200 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-red-600 leading-relaxed">${escHtml(text)}</div>`;
+        }
+        container.appendChild(wrap);
+        container.scrollTop = container.scrollHeight;
+        return wrap;
+      }
+
+      let thinkingCounter = 0;
+      function appendThinkingBubble() {
+        const id = `thinking-${thinkingCounter++}`;
+        const container = document.getElementById('chat-messages');
+        const wrap = document.createElement('div');
+        wrap.id = id;
+        wrap.className = 'flex justify-start gap-2';
+        wrap.innerHTML = `
+          <div class="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-xs shrink-0 mt-0.5">AI</div>
+          <div class="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+            <span class="inline-flex gap-1 items-center text-slate-400 text-xs">
+              <span class="animate-bounce" style="animation-delay:0ms">●</span>
+              <span class="animate-bounce" style="animation-delay:150ms">●</span>
+              <span class="animate-bounce" style="animation-delay:300ms">●</span>
+            </span>
+          </div>`;
+        container.appendChild(wrap);
+        container.scrollTop = container.scrollHeight;
+        return id;
+      }
+
+      function removeThinkingBubble(id) {
+        document.getElementById(id)?.remove();
       }
 
       // --- History ---
