@@ -160,6 +160,8 @@ class FirestoreManager:
         if not snapshot.exists:
             return None
         data = snapshot.to_dict()
+        if data is None:
+            return None
         data["embedding"] = list(data["embedding"])
         return KnowledgeDocument.model_validate(data)
 
@@ -170,6 +172,8 @@ class FirestoreManager:
         results: list[KnowledgeDocumentSummary] = []
         async for doc in query.stream():
             d = doc.to_dict()
+            if d is None:
+                continue
             results.append(
                 KnowledgeDocumentSummary(
                     doc_id=d["doc_id"],
@@ -195,8 +199,12 @@ class FirestoreManager:
             limit=limit,
         )
         results: list[KnowledgeDocument] = []
-        async for doc in vector_query.stream():
+        # find_nearest() の型スタブが AsyncCollectionReference でも sync VectorQuery を返すと
+        # 誤って解釈するため、stream() の非同期イテレーションを type: ignore で抑制する
+        async for doc in vector_query.stream():  # type: ignore[attr-defined]
             data = doc.to_dict()
+            if data is None:
+                continue
             data["embedding"] = list(data["embedding"])
             results.append(KnowledgeDocument.model_validate(data))
         return results

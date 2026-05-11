@@ -42,7 +42,12 @@ class EmbeddingCore:
             model=_EMBEDDING_MODEL,
             contents=text,
         )
-        return list(response.embeddings[0].values)
+        if not response.embeddings:
+            raise ValueError("埋め込み生成に失敗しました。")
+        values = response.embeddings[0].values
+        if values is None:
+            raise ValueError("埋め込み値がNoneでした。")
+        return list(values)
 
     async def embed_texts(self, texts: list[str]) -> list[list[float]]:
         """複数テキストを並列で埋め込みベクトルに変換する。"""
