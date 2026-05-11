@@ -98,10 +98,11 @@ async def get_knowledge_document(doc_id: str) -> KnowledgeDocument:
 
 @router.delete("/documents/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_knowledge_document(doc_id: str) -> None:
-    """指定IDのナレッジドキュメントをFirestoreから削除する。"""
+    """指定IDのナレッジドキュメントをFirestoreおよびGCSから削除する。"""
     doc = await firestore_manager.get_knowledge_document(doc_id)
     if doc is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="ドキュメントが見つかりません。"
         )
     await firestore_manager.delete_knowledge_document(doc_id)
+    await _storage.delete_file_async(doc.source_gcs_uri)
