@@ -14,6 +14,8 @@ from src.api.auth import verify_api_key
 from src.core.ai import GeminiCore
 from src.core.firestore import firestore_manager
 from src.core.resume_schema import (
+    CompanyFacingQuestion,
+    CompanyFacingQuestionList,
     CompanyProfile,
     ExperienceMatchList,
     InterviewChatRequest,
@@ -286,6 +288,54 @@ def _build_gap_prompt(
         "そのギャップへの具体的な対策・アピール方法を詳しく記述してください\n"
         "2. overall_fit_score（0.0〜1.0）: "
         "スキルの適合度・経験年数・文化フィットを総合判断したスコア"
+    )
+
+
+def _build_company_facing_questions_prompt(
+    job_company: str,
+    job_role: str,
+    job_desired: str,
+    job_culture: str,
+    profile: ResumeProfile,
+    personal: PersonalProfile | None = None,
+    company_info: str | None = None,
+) -> str:
+    exp_summary = "\n".join(
+        f"- {e.company}（{e.role}、{e.period}）: {e.description}" for e in profile.work_experiences
+    )
+    personal_section = ""
+    if personal:
+        values_str = "、".join(personal.values) if personal.values else "（未設定）"
+        personal_section = (
+            f"\n## 求職者のパーソナリティ\n"
+            f"価値観: {values_str}\n"
+            f"キャリアビジョン: {personal.career_vision}\n"
+            f"働き方の好み: {personal.work_style}\n"
+        )
+    company_info_section = (
+        f"\n## 企業の詳細情報（採用ページ・技術ブログ等より）\n{company_info[:2000]}\n"
+        if company_info
+        else ""
+    )
+    return (
+        "あなたは面接戦略の専門家です。\n"
+        "求職者が面接の最後に企業へ問いかける「逆質問」を5件生成してください。\n"
+        "面接官が「この候補者はよく考えてきたな」と感じ、かつ求職者の熱意・洞察力が伝わる質問を選んでください。\n\n"
+        f"## 求職者の職歴サマリー\n{profile.summary}\n\n"
+        f"## 職歴\n{exp_summary}\n"
+        + personal_section
+        + f"\n## 求人情報\n企業: {job_company}\n役職: {job_role}\n"
+        f"求める人物像: {job_desired}\n企業文化: {job_culture}\n"
+        + company_info_section
+        + "\n## 各質問に含める内容\n"
+        "- question: 企業に問いかける具体的な逆質問（日本語）\n"
+        "- intent: なぜこの質問が面接官に刺さるか・質問の戦略的意図（100字以上）\n"
+        "- talking_point: 自分の経験・価値観と絡めてこの質問を自然に切り出すヒント（100字以上）\n\n"
+        "## 注意事項\n"
+        "- 給与・待遇・残業時間のみを問う質問は禁止\n"
+        "- 企業の詳細情報がある場合は企業固有の内容（技術スタック・文化・事業）を反映すること\n"
+        "- パーソナルプロフィールがある場合はキャリアビジョン・価値観を質問に自然に絡めること\n"
+        "- 存在しない情報を推測で作り出すことは禁止"
     )
 
 
@@ -839,3 +889,81 @@ async def chat_interview_question(
     prompt = _build_chat_prompt(body.question, job, profile, personal, company_info)
     answer = await _ai_core.analyze_text_simple(prompt)
     return InterviewChatResponse(answer=answer)
+
+  
+@router.post(
+    "/jobs/{job_id}/company-questions",
+    response_model=list[CompanyFacingQuestion],
+    status_code=status.HTTP_201_CREATED,
+)
+async def generate_company_facing_questions(
+    job_id: str,
+    api_key: Annotated[str, Security(verify_api_key)],
+) -> list[CompanyFacingQuestion]:
+    """指定した job_id の分析結果をもとに、企業に刺さる逆質問を生成してFirestoreに保存する"""
+    job_analysis = await firestore_manager.get_resume_job_analysis(job_id)
+    if job_analysis is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"job_id '{job_id}' が見つかりません。",
+        )
+
+    profile = await firestore_manager.get_resume_profile()
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "職務経歴書が未登録です。"
+                "先に POST /resume/profile でPDFをアップロードしてください。"
+            ),
+        )
+
+    personal = await firestore_manager.get_personal_profile()
+
+    company_info: str | None = None
+    if job_analysis.company_profile_id:
+        company = await firestore_manager.get_company_profile(job_analysis.company_profile_id)
+        if company and company.combined_company_info:
+            company_info = company.combined_company_info
+
+    question_list = await _ai_core.analyze_text(
+        prompt=_build_company_facing_questions_prompt(
+            job_analysis.job_posting_company,
+            job_analysis.job_posting_role,
+            job_analysis.job_posting_desired_person,
+            job_analysis.job_posting_culture,
+            profile,
+            personal,
+            company_info,
+        ),
+        response_schema=CompanyFacingQuestionList,
+    )
+
+    updated = job_analysis.model_copy(
+        update={"company_facing_questions": question_list.items}
+    )
+    await firestore_manager.save_resume_job_analysis(updated)
+    return question_list.items
+
+
+@router.get("/jobs/{job_id}/company-questions", response_model=list[CompanyFacingQuestion])
+async def get_company_facing_questions(
+    job_id: str,
+    api_key: Annotated[str, Security(verify_api_key)],
+) -> list[CompanyFacingQuestion]:
+    """指定した job_id に保存済みの逆質問リストを返す"""
+    job_analysis = await firestore_manager.get_resume_job_analysis(job_id)
+    if job_analysis is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"job_id '{job_id}' が見つかりません。",
+        )
+    if job_analysis.company_facing_questions is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "逆質問がまだ生成されていません。"
+                f"POST /resume/jobs/{job_id}/company-questions で生成してください。"
+            ),
+        )
+    return job_analysis.company_facing_questions

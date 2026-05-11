@@ -97,6 +97,24 @@ class ResumeInterviewQuestionList(BaseModel):
     )
 
 
+class CompanyFacingQuestion(BaseModel):
+    """面接で企業に問いかける逆質問"""
+
+    question: str = Field(description="企業に聞く逆質問（日本語）")
+    intent: str = Field(
+        description="この質問をする意図と企業に刺さる理由（日本語・100字以上）"
+    )
+    talking_point: str = Field(
+        description="自分の経験・価値観と絡めた話し方のヒント（日本語・100字以上）"
+    )
+
+
+class CompanyFacingQuestionList(BaseModel):
+    """CompanyFacingQuestionのリストを返すためのラッパー"""
+
+    items: list[CompanyFacingQuestion] = Field(description="逆質問リスト（5件程度）")
+
+
 class ResumeGapAnalysisResult(BaseModel):
     """ギャップ分析とフィットスコアの結果"""
 
@@ -135,6 +153,9 @@ class ResumeJobAnalysisResult(BaseModel):
     created_at: str = Field(description="分析実行日時（ISO 8601形式）")
     company_profile_id: str | None = Field(
         default=None, description="使用した企業プロフィールID（任意）"
+    )
+    company_facing_questions: list[CompanyFacingQuestion] | None = Field(
+        default=None, description="企業に刺さる逆質問リスト（生成済みの場合のみ）"
     )
 
 
