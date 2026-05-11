@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ナレッジ検索システム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+
+  <body class="bg-slate-50 min-h-screen">
+    <div class="max-w-6xl mx-auto px-4 py-8">
+      <h1 class="text-2xl font-bold text-center text-slate-800 mb-1">📚 ナレッジ検索システム</h1>
+      <p class="text-center text-slate-500 text-sm mb-8">過去の業務知見を蓄積・検索するRAGシステム</p>
+
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+        <!-- 左ペイン: ナレッジ管理 -->
+        <div class="lg:col-span-2 space-y-4">
+
+          <!-- PDFアップロード -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+            <h2 class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+              <span class="bg-emerald-600 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">+</span>
+              ドキュメント登録
+            </h2>
+            <label class="block text-sm text-slate-600 mb-2">PDFファイルをアップロード</label>
+            <input
+              id="pdf-input"
+              type="file"
+              accept="application/pdf"
+              class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 mb-3"
+            />
+            <button
+              onclick="uploadDocument()"
+              id="upload-btn"
+              class="w-full bg-emerald-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+            >
+              アップロード・登録
+            </button>
+            <div id="upload-progress" class="hidden mt-2 text-sm text-emerald-600">⏳ PDFを解析・埋め込み中... (30〜60秒かかります)</div>
+            <div id="upload-result" class="mt-2"></div>
+          </div>
+
+          <!-- ドキュメント一覧 -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="font-semibold text-slate-800">登録済みドキュメント</h2>
+              <button
+                onclick="loadDocuments()"
+                class="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                更新
+              </button>
+            </div>
+            <div id="doc-list" class="space-y-2 text-sm text-slate-500">読み込み中...</div>
+          </div>
+        </div>
+
+        <!-- 右ペイン: 検索 -->
+        <div class="lg:col-span-3 space-y-4">
+
+          <!-- 検索フォーム -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+            <h2 class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+              <span class="bg-blue-600 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">🔍</span>
+              ナレッジ検索
+            </h2>
+            <textarea
+              id="query-input"
+              rows="3"
+              placeholder="質問を入力してください（例：〇〇プロジェクトのリスク対応方針は？）"
+              class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none mb-3"
+            ></textarea>
+            <div class="flex items-center gap-3">
+              <button
+                onclick="searchKnowledge()"
+                id="search-btn"
+                class="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+              >
+                検索・回答生成
+              </button>
+              <div class="flex items-center gap-1 text-xs text-slate-400">
+                <span>件数</span>
+                <select id="top-k-select" class="border border-slate-200 rounded px-1 py-1 text-xs focus:outline-none">
+                  <option value="3">3</option>
+                  <option value="5" selected>5</option>
+                  <option value="10">10</option>
+                </select>
+              </div>
+            </div>
+            <div id="search-progress" class="hidden mt-2 text-sm text-blue-600">⏳ 検索・回答生成中...</div>
+          </div>
+
+          <!-- 回答表示 -->
+          <div id="answer-section" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+            <div class="flex items-start justify-between mb-3">
+              <h2 class="font-semibold text-slate-800">回答</h2>
+              <div class="flex gap-2">
+                <button
+                  onclick="submitFeedback(true)"
+                  id="btn-helpful"
+                  class="text-lg hover:scale-110 transition-transform"
+                  title="役に立った"
+                >👍</button>
+                <button
+                  onclick="submitFeedback(false)"
+                  id="btn-unhelpful"
+                  class="text-lg hover:scale-110 transition-transform"
+                  title="役に立たなかった"
+                >👎</button>
+              </div>
+            </div>
+            <div id="feedback-status" class="text-xs text-slate-400 mb-3"></div>
+            <div id="answer-text" class="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap mb-4"></div>
+
+            <!-- 参照ソース -->
+            <div id="sources-section">
+              <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">参照ドキュメント</h3>
+              <div id="sources-list" class="space-y-2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let currentLogId = null;
+
+      // ページ読み込み時にドキュメント一覧を取得
+      window.addEventListener('DOMContentLoaded', loadDocuments);
+
+      async function loadDocuments() {
+        const el = document.getElementById('doc-list');
+        el.innerHTML = '<span class="text-slate-400">読み込み中...</span>';
+        try {
+          const res = await fetch('/knowledge/documents');
+          const docs = await res.json();
+          if (docs.length === 0) {
+            el.innerHTML = '<p class="text-slate-400 text-xs">登録済みドキュメントはありません。</p>';
+            return;
+          }
+          el.innerHTML = docs.map(d => `
+            <div class="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100 group">
+              <div class="min-w-0">
+                <p class="font-medium text-slate-700 truncate text-xs">${escapeHtml(d.title)}</p>
+                <p class="text-slate-400 text-xs">${new Date(d.created_at).toLocaleDateString('ja-JP')}</p>
+              </div>
+              <button
+                onclick="deleteDocument('${d.doc_id}', '${escapeHtml(d.title)}')"
+                class="ml-2 text-slate-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all text-xs flex-shrink-0"
+                title="削除"
+              >✕</button>
+            </div>
+          `).join('');
+        } catch (e) {
+          el.innerHTML = `<p class="text-red-400 text-xs">取得に失敗しました: ${e.message}</p>`;
+        }
+      }
+
+      async function uploadDocument() {
+        const input = document.getElementById('pdf-input');
+        const btn = document.getElementById('upload-btn');
+        const progress = document.getElementById('upload-progress');
+        const result = document.getElementById('upload-result');
+
+        if (!input.files || input.files.length === 0) {
+          result.innerHTML = '<p class="text-red-500 text-xs">PDFファイルを選択してください。</p>';
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', input.files[0]);
+
+        btn.disabled = true;
+        progress.classList.remove('hidden');
+        result.innerHTML = '';
+
+        try {
+          const res = await fetch('/knowledge/documents', { method: 'POST', body: formData });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.detail || '登録に失敗しました。');
+          }
+          result.innerHTML = `<p class="text-emerald-600 text-xs">✅ 登録完了: ${escapeHtml(data.title)}</p>`;
+          input.value = '';
+          loadDocuments();
+        } catch (e) {
+          result.innerHTML = `<p class="text-red-500 text-xs">❌ エラー: ${e.message}</p>`;
+        } finally {
+          btn.disabled = false;
+          progress.classList.add('hidden');
+        }
+      }
+
+      async function deleteDocument(docId, title) {
+        if (!confirm(`「${title}」を削除しますか？`)) return;
+        try {
+          const res = await fetch(`/knowledge/documents/${docId}`, { method: 'DELETE' });
+          if (!res.ok && res.status !== 204) {
+            const data = await res.json();
+            throw new Error(data.detail || '削除に失敗しました。');
+          }
+          loadDocuments();
+        } catch (e) {
+          alert(`削除エラー: ${e.message}`);
+        }
+      }
+
+      async function searchKnowledge() {
+        const query = document.getElementById('query-input').value.trim();
+        const topK = parseInt(document.getElementById('top-k-select').value, 10);
+        const btn = document.getElementById('search-btn');
+        const progress = document.getElementById('search-progress');
+        const answerSection = document.getElementById('answer-section');
+
+        if (!query) {
+          alert('質問を入力してください。');
+          return;
+        }
+
+        btn.disabled = true;
+        progress.classList.remove('hidden');
+        answerSection.classList.add('hidden');
+        currentLogId = null;
+        document.getElementById('feedback-status').textContent = '';
+
+        try {
+          const res = await fetch('/search/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, top_k: topK }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.detail || '検索に失敗しました。');
+          }
+
+          currentLogId = data.log_id;
+          document.getElementById('answer-text').textContent = data.answer;
+
+          const sourcesList = document.getElementById('sources-list');
+          sourcesList.innerHTML = (data.sources || []).map(s => `
+            <div class="p-2 rounded-lg bg-slate-50 border border-slate-100">
+              <p class="text-xs font-medium text-slate-600">${escapeHtml(s.title)}</p>
+              <p class="text-xs text-slate-400 mt-1 line-clamp-2">${escapeHtml(s.excerpt)}</p>
+            </div>
+          `).join('');
+
+          answerSection.classList.remove('hidden');
+        } catch (e) {
+          alert(`検索エラー: ${e.message}`);
+        } finally {
+          btn.disabled = false;
+          progress.classList.add('hidden');
+        }
+      }
+
+      async function submitFeedback(helpful) {
+        if (!currentLogId) return;
+        const statusEl = document.getElementById('feedback-status');
+        try {
+          const res = await fetch(`/search/feedback/${currentLogId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ helpful }),
+          });
+          if (!res.ok && res.status !== 204) {
+            const data = await res.json();
+            throw new Error(data.detail || '送信に失敗しました。');
+          }
+          statusEl.textContent = helpful ? '👍 フィードバックを記録しました' : '👎 フィードバックを記録しました';
+          document.getElementById('btn-helpful').disabled = true;
+          document.getElementById('btn-unhelpful').disabled = true;
+        } catch (e) {
+          statusEl.textContent = `エラー: ${e.message}`;
+        }
+      }
+
+      // 検索フォームでEnter送信
+      document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('query-input').addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            searchKnowledge();
+          }
+        });
+      });
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+    </script>
+  </body>
+</html>
