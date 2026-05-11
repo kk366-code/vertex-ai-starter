@@ -1,6 +1,9 @@
 from google.cloud import firestore
+from google.cloud.firestore_v1.base_vector_query import DistanceMeasure
+from google.cloud.firestore_v1.vector import Vector
 
 from src.core.config import settings
+from src.core.knowledge_schema import KnowledgeDocument, KnowledgeDocumentSummary, SearchLog
 from src.core.pdf_schema import PdfTextResult
 from src.core.resume_schema import (
     CompanyProfile,
@@ -17,6 +20,8 @@ _COLLECTION_RESUME_JOBS = "resume_job_analyses"
 _COLLECTION_PERSONAL_PROFILE = "personal_profiles"
 _COLLECTION_COMPANY_PROFILES = "company_profiles"
 _COLLECTION_PDF_TEXTS = "pdf_texts"
+_COLLECTION_KNOWLEDGE_DOCS = "knowledge_documents"
+_COLLECTION_SEARCH_LOGS = "search_logs"
 _PROFILE_DOC_ID = "current"
 
 
@@ -141,6 +146,77 @@ class FirestoreManager:
         if not snapshot.exists:
             return None
         return PdfTextResult.model_validate(snapshot.to_dict())
+
+    async def save_knowledge_document(self, doc: KnowledgeDocument) -> str:
+        data = doc.model_dump()
+        data["embedding"] = Vector(doc.embedding)
+        doc_ref = self.client.collection(_COLLECTION_KNOWLEDGE_DOCS).document(doc.doc_id)
+        await doc_ref.set(data)
+        return doc.doc_id
+
+    async def get_knowledge_document(self, doc_id: str) -> KnowledgeDocument | None:
+        doc_ref = self.client.collection(_COLLECTION_KNOWLEDGE_DOCS).document(doc_id)
+        snapshot = await doc_ref.get()
+        if not snapshot.exists:
+            return None
+        data = snapshot.to_dict()
+        if data is None:
+            return None
+        data["embedding"] = list(data["embedding"])
+        return KnowledgeDocument.model_validate(data)
+
+    async def list_knowledge_documents(self) -> list[KnowledgeDocumentSummary]:
+        query = self.client.collection(_COLLECTION_KNOWLEDGE_DOCS).order_by(
+            "created_at", direction=firestore.Query.DESCENDING
+        )
+        results: list[KnowledgeDocumentSummary] = []
+        async for doc in query.stream():
+            d = doc.to_dict()
+            if d is None:
+                continue
+            results.append(
+                KnowledgeDocumentSummary(
+                    doc_id=d["doc_id"],
+                    title=d["title"],
+                    source_gcs_uri=d["source_gcs_uri"],
+                    created_at=d["created_at"],
+                )
+            )
+        return results
+
+    async def delete_knowledge_document(self, doc_id: str) -> None:
+        doc_ref = self.client.collection(_COLLECTION_KNOWLEDGE_DOCS).document(doc_id)
+        await doc_ref.delete()
+
+    async def vector_search_knowledge(
+        self, query_embedding: list[float], limit: int = 5
+    ) -> list[KnowledgeDocument]:
+        collection = self.client.collection(_COLLECTION_KNOWLEDGE_DOCS)
+        vector_query = collection.find_nearest(
+            vector_field="embedding",
+            query_vector=Vector(query_embedding),
+            distance_measure=DistanceMeasure.COSINE,
+            limit=limit,
+        )
+        results: list[KnowledgeDocument] = []
+        # find_nearest() の型スタブが AsyncCollectionReference でも sync VectorQuery を返すと
+        # 誤って解釈するため、stream() の非同期イテレーションを type: ignore で抑制する
+        async for doc in vector_query.stream():  # type: ignore[attr-defined]
+            data = doc.to_dict()
+            if data is None:
+                continue
+            data["embedding"] = list(data["embedding"])
+            results.append(KnowledgeDocument.model_validate(data))
+        return results
+
+    async def save_search_log(self, log: SearchLog) -> str:
+        doc_ref = self.client.collection(_COLLECTION_SEARCH_LOGS).document(log.log_id)
+        await doc_ref.set(log.model_dump())
+        return log.log_id
+
+    async def update_search_feedback(self, log_id: str, helpful: bool) -> None:
+        doc_ref = self.client.collection(_COLLECTION_SEARCH_LOGS).document(log_id)
+        await doc_ref.update({"helpful": helpful})
 
 
 firestore_manager = FirestoreManager()

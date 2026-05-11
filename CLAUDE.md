@@ -12,7 +12,7 @@
 - **App Execution (Main)**: `uv run main.py`
 - **API Execution (FastAPI)**: `uv run uvicorn src.api.main:app --reload`
 - **Testing**: `uv run pytest`
-- **Linting & Formatting**: `uv run ruff check . --fix`
+- **Linting & Formatting**: `uv run ruff format . && uv run ruff check . --fix`
 - **Type Checking**: `uv run mypy .`
 
 ## 📏 Coding Standards (2026 Edition)
@@ -23,6 +23,7 @@
 - **Async Pattern**: Gemini API呼び出しには `client.aio` (Async API) を使用し、一貫して非同期処理を徹底します。
 - **Schema Validation**: AIのレスポンス定義には必ず Pydantic `BaseModel` を使用します。
 - **Naming**: 変数・関数名は `snake_case`、クラス名は `PascalCase`、定数は `UPPER_SNAKE_CASE` を遵守します。
+- **External API Response Nullability**: Google SDK（google-genai, google-cloud-firestore等）のレスポンスフィールドは `| None` を含む型定義が多い。フィールドへのアクセス前に必ず None チェックを行い、mypy エラーを防ぐこと（詳細は SKILL.md の「Known Pitfalls」を参照）。
 
 ## 📂 Project Structure
 

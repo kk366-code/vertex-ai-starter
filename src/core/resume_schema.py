@@ -20,15 +20,9 @@ class PersonalProfile(BaseModel):
     influential_items: list[str] = Field(
         description="影響を受けた本・人のリスト。例: ['ティール組織', '〇〇さん（元上司）']"
     )
-    episodes: list[StarEpisode] = Field(
-        description="印象的なエピソード（STAR形式）のリスト"
-    )
-    career_vision: str = Field(
-        description="キャリアビジョン（5年後・10年後にどうなりたいか）"
-    )
-    work_style: str = Field(
-        description="働き方の好み（リモート・裁量・チームのあり方など）"
-    )
+    episodes: list[StarEpisode] = Field(description="印象的なエピソード（STAR形式）のリスト")
+    career_vision: str = Field(description="キャリアビジョン（5年後・10年後にどうなりたいか）")
+    work_style: str = Field(description="働き方の好み（リモート・裁量・チームのあり方など）")
 
 
 class WorkExperience(BaseModel):
@@ -47,9 +41,7 @@ class _ResumeProfileExtract(BaseModel):
     skills: list[str] = Field(
         description="保有スキル・技術のリスト。例: ['Python', 'SQL', 'プロジェクトマネジメント']"
     )
-    work_experiences: list[WorkExperience] = Field(
-        description="職歴リスト。新しい順に並べること"
-    )
+    work_experiences: list[WorkExperience] = Field(description="職歴リスト。新しい順に並べること")
     summary: str = Field(
         description="職務経歴の全体サマリー（200字以上）。強み・専門領域・キャリアの方向性を含めること"
     )
@@ -61,9 +53,7 @@ class ResumeProfile(BaseModel):
     skills: list[str] = Field(
         description="保有スキル・技術のリスト。例: ['Python', 'SQL', 'プロジェクトマネジメント']"
     )
-    work_experiences: list[WorkExperience] = Field(
-        description="職歴リスト。新しい順に並べること"
-    )
+    work_experiences: list[WorkExperience] = Field(description="職歴リスト。新しい順に並べること")
     summary: str = Field(
         description="職務経歴の全体サマリー（200字以上）。強み・専門領域・キャリアの方向性を含めること"
     )
@@ -80,9 +70,7 @@ class ExperienceMatch(BaseModel):
     relevance_reason: str = Field(
         description="このスキル・経験が求人にどう活きるかの具体的な説明（日本語・100字以上）"
     )
-    priority: int = Field(
-        description="アピール優先度。1が最重要で5が最低。1〜5の整数", ge=1, le=5
-    )
+    priority: int = Field(description="アピール優先度。1が最重要で5が最低。1〜5の整数", ge=1, le=5)
 
 
 class ExperienceMatchList(BaseModel):
@@ -98,9 +86,7 @@ class ResumeInterviewQuestion(BaseModel):
     answer_example: str = Field(
         description="職務経歴の具体的な実績を活かしたSTAR形式の回答例（日本語・200字以上）"
     )
-    experience_used: list[str] = Field(
-        description="この回答で活用している職歴・スキルの名称リスト"
-    )
+    experience_used: list[str] = Field(description="この回答で活用している職歴・スキルの名称リスト")
 
 
 class ResumeInterviewQuestionList(BaseModel):
@@ -198,10 +184,20 @@ class CompanyProfile(BaseModel):
     company_name: str | None = Field(default=None, description="企業名")
     hiring_page_url: str | None = Field(default=None, description="採用ページURL")
     tech_blog_urls: list[str] = Field(default=[], description="技術ブログURLリスト")
-    employee_interview_urls: list[str] = Field(
-        default=[], description="社員インタビューURLリスト"
-    )
+    employee_interview_urls: list[str] = Field(default=[], description="社員インタビューURLリスト")
     free_text: str | None = Field(default=None, description="その他自由記述（企業情報補足）")
     pdf_gcs_uris: list[str] = Field(default=[], description="企業説明PDFのGCS URIリスト")
     combined_company_info: str = Field(default="", description="AI統合済み企業プロフィールテキスト")
     created_at: str = Field(description="作成日時（ISO 8601形式）")
+
+
+class InterviewChatRequest(BaseModel):
+    """面接チャットのリクエスト"""
+
+    question: str = Field(description="面接で聞かれた（または聞かれそうな）質問")
+
+
+class InterviewChatResponse(BaseModel):
+    """面接チャットのレスポンス"""
+
+    answer: str = Field(description="Geminiが生成した回答アドバイス")

@@ -35,6 +35,25 @@ class CloudStorageManager:
             file_name,
         )
 
+    async def delete_file_async(self, gcs_uri: str) -> None:
+        """【非同期版】GCS上のファイルを削除する。gs:// URI を受け取る。"""
+        if not self.bucket_name:
+            raise ValueError("GCS_BUCKET_NAME が設定されていません")
+        # gs://bucket-name/blob-name → blob-name を抽出
+        prefix = f"gs://{self.bucket_name}/"
+        if not gcs_uri.startswith(prefix):
+            raise ValueError(f"URIがこのバケットに属していません: {gcs_uri}")
+        blob_name = gcs_uri[len(prefix) :]
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(self._executor, self._delete_logic, blob_name)
+
+    def _delete_logic(self, blob_name: str) -> None:
+        """実際の削除処理を行う内部ロジック。"""
+        bucket = self.client.bucket(self.bucket_name)
+        blob = bucket.blob(blob_name)
+        blob.delete()
+        print(f"Deleted gs://{self.bucket_name}/{blob_name}")
+
     def _upload_logic(self, source_path: str, destination_blob_name: str) -> str:
         """
         実際のアップロード処理を行う内部共通ロジック
