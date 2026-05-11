@@ -64,6 +64,40 @@ mock_method = mocker.patch.object(
 - **Error Handling**: 解析不能な場合（画像が壊れている等）は、例外を投げるのではなく、スキーマの `success=False` フィールドを使用して正常に応答を返してください。
 - **Text Encoding**: 特にWindows環境での実行を考慮し、ファイル操作やログ出力時は常に `UTF-8` を明示してください。
 
+### Google SDK の None チェックパターン
+
+**google-genai レスポンスフィールド**: `embed_content()` など多くのメソッドがフィールドを `| None` 付きで型定義している。インデックスアクセスや `.values` などの取得前に必ずガードを入れる。
+
+```python
+# NG: mypy エラーになる
+return list(response.embeddings[0].values)
+
+# OK: None チェック後にアクセス
+if not response.embeddings:
+    raise ValueError("埋め込み生成に失敗しました。")
+values = response.embeddings[0].values
+if values is None:
+    raise ValueError("埋め込み値がNoneでした。")
+return list(values)
+```
+
+**Firestore `to_dict()` の直接インデックスアクセス**: `snapshot.to_dict()` の戻り型は `dict[str, Any] | None`。`model_validate()` に渡すだけなら mypy はパスするが、`data["key"]` のように直接アクセスする場合は None チェックが必要。
+
+```python
+# snapshot.exists チェック後でも to_dict() は型上 None を返しうる
+data = snapshot.to_dict()
+if data is None:
+    return None
+data["embedding"] = list(data["embedding"])  # None チェック後なら安全
+```
+
+**Firestore Vector Search の型スタブ問題**: `AsyncCollectionReference.find_nearest()` は型スタブ上で sync `VectorQuery` を返すと誤解釈されるため、`stream()` を `async for` で使う際に mypy エラーが出る。`# type: ignore[attr-defined]` で抑制する（ランタイムは正常動作）。
+
+```python
+async for doc in vector_query.stream():  # type: ignore[attr-defined]
+    ...
+```
+
 ## 🐍 Python / FastAPI
 
 ### Safe Temporary File Handling
