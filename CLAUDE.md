@@ -40,6 +40,10 @@
   - `tempfile.TemporaryDirectory(dir=Path("upload"))` を使用し、作業完了後（またはエラー時）に自動削除されるように設計する。
   - 元ファイルを破壊・削除しないよう、パスの分離を徹底する。
 
+## 🎨 HTML Formatting (Prettier)
+
+HTMLファイルは `.prettierrc` に基づき整形すること。
+
 ## 📝 Git & PR Convention
 
 - **タイトル（1行目）**: 英語で記述する。例: `feat: add agent UI`, `fix: handle empty URL response`
