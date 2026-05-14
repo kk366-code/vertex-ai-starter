@@ -11,6 +11,14 @@ class StarEpisode(BaseModel):
     result: str = Field(description="Result: 結果・学び")
 
 
+class WorkExperienceNote(BaseModel):
+    """職歴ごとの深掘りメモ（ユーザー記入）"""
+
+    company: str = Field(description="会社名（WorkExperienceと同じ値で紐付け）")
+    role: str = Field(description="役職名（WorkExperienceと同じ値で紐付け）")
+    detail: str = Field(description="面接深掘り用の詳細メモ（自由記述）")
+
+
 class PersonalProfile(BaseModel):
     """面接対策を「あなたらしく」するためのパーソナルプロフィール"""
 
@@ -23,6 +31,10 @@ class PersonalProfile(BaseModel):
     episodes: list[StarEpisode] = Field(description="印象的なエピソード（STAR形式）のリスト")
     career_vision: str = Field(description="キャリアビジョン（5年後・10年後にどうなりたいか）")
     work_style: str = Field(description="働き方の好み（リモート・裁量・チームのあり方など）")
+    work_experience_notes: list[WorkExperienceNote] = Field(
+        default=[],
+        description="職歴ごとの深掘りメモリスト（面接対策用・ユーザー記入）",
+    )
 
 
 class WorkExperience(BaseModel):
