@@ -171,6 +171,12 @@ def _build_questions_prompt(
                 for ep in personal.episodes
             )
             personal_section += f"\n印象的なエピソード（STAR形式）:\n{episodes_str}\n"
+        if personal.work_experience_notes:
+            notes_str = "\n".join(
+                f"  [{n.company}（{n.role}）] {n.detail}"
+                for n in personal.work_experience_notes
+            )
+            personal_section += f"\n職歴ごとの深掘りメモ（面接対策用）:\n{notes_str}\n"
     company_info_section = (
         f"\n## 企業の詳細情報（採用ページ・技術ブログ等より）\n{company_info[:2000]}\n"
         if company_info
@@ -229,6 +235,12 @@ def _build_chat_prompt(
                 for ep in personal.episodes
             )
             personal_section += f"\n印象的なエピソード（STAR形式）:\n{eps}\n"
+        if personal.work_experience_notes:
+            notes_str = "\n".join(
+                f"  [{n.company}（{n.role}）] {n.detail}"
+                for n in personal.work_experience_notes
+            )
+            personal_section += f"\n職歴ごとの深掘りメモ（面接対策用）:\n{notes_str}\n"
     company_section = f"\n## 企業の詳細情報\n{company_info[:2000]}\n" if company_info else ""
     return (
         "あなたは経験豊富な面接コーチです。\n"
