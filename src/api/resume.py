@@ -890,7 +890,7 @@ async def chat_interview_question(
     answer = await _ai_core.analyze_text_simple(prompt)
     return InterviewChatResponse(answer=answer)
 
-  
+
 @router.post(
     "/jobs/{job_id}/company-questions",
     response_model=list[CompanyFacingQuestion],
@@ -939,9 +939,7 @@ async def generate_company_facing_questions(
         response_schema=CompanyFacingQuestionList,
     )
 
-    updated = job_analysis.model_copy(
-        update={"company_facing_questions": question_list.items}
-    )
+    updated = job_analysis.model_copy(update={"company_facing_questions": question_list.items})
     await firestore_manager.save_resume_job_analysis(updated)
     return question_list.items
 

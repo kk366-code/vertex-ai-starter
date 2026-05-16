@@ -21,6 +21,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+from src.api.anonymize import router as anonymize_router
 from src.api.auth import verify_api_key
 from src.api.jobs import router as jobs_router
 from src.api.knowledge import router as knowledge_router
@@ -42,6 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(anonymize_router)
 app.include_router(strengths_router)
 app.include_router(jobs_router)
 app.include_router(resume_router)
