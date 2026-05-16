@@ -113,9 +113,7 @@ class CompanyFacingQuestion(BaseModel):
     """面接で企業に問いかける逆質問"""
 
     question: str = Field(description="企業に聞く逆質問（日本語）")
-    intent: str = Field(
-        description="この質問をする意図と企業に刺さる理由（日本語・100字以上）"
-    )
+    intent: str = Field(description="この質問をする意図と企業に刺さる理由（日本語・100字以上）")
     talking_point: str = Field(
         description="自分の経験・価値観と絡めた話し方のヒント（日本語・100字以上）"
     )

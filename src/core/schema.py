@@ -51,9 +51,7 @@ class EnvironmentAnalysisResult(BaseModel):
     recommendations: list[str] = Field(
         description="環境改善のための具体的な提案リスト（日本語）。改善不要な場合は空リスト。"
     )
-    confidence_score: float = Field(
-        description="解析の信頼度 (0.0-1.0)。", ge=0, le=1
-    )
+    confidence_score: float = Field(description="解析の信頼度 (0.0-1.0)。", ge=0, le=1)
 
 
 # 複数のタスクがある場合は、ここに別のモデルを定義して使い分けます
