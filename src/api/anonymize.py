@@ -1,5 +1,6 @@
 import asyncio
-from typing import Annotated
+from collections.abc import Callable, Coroutine
+from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Security, status
 
@@ -21,7 +22,8 @@ router = APIRouter(prefix="/anonymize", tags=["anonymize"])
 _ai_core = GeminiCore()
 
 # 比較対象の手法リスト。新しい手法を追加する場合はここに追記する。
-_METHODS = [
+_AnonymizeMethod = Callable[..., Coroutine[Any, Any, Any]]
+_METHODS: list[_AnonymizeMethod] = [
     anonymize_with_regex,
     anonymize_with_gemini,
     anonymize_with_ollama,
