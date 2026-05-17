@@ -8,6 +8,7 @@ from src.api.auth import verify_api_key
 from src.core.ai import GeminiCore
 from src.core.anonymize_methods import (
     anonymize_with_gemini,
+    anonymize_with_ginza,
     anonymize_with_ollama,
     anonymize_with_regex,
 )
@@ -25,6 +26,7 @@ _ai_core = GeminiCore()
 _AnonymizeMethod = Callable[..., Coroutine[Any, Any, Any]]
 _METHODS: list[_AnonymizeMethod] = [
     anonymize_with_regex,
+    anonymize_with_ginza,
     anonymize_with_gemini,
     anonymize_with_ollama,
 ]
