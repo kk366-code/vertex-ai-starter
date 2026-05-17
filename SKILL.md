@@ -79,6 +79,18 @@ mock_method = mocker.patch.object(
 
 ```
 
+## ✅ 実装完了チェックリスト
+
+コミット・プッシュ前に必ず以下を実行する:
+
+```bash
+uv run ruff format . && uv run ruff check . --fix  # フォーマット＆リント
+uv run mypy .                                        # 型チェック
+uv run pytest                                        # テスト
+```
+
+mypy を省略すると CI でのみエラーが発覚し、修正コミットが増える。
+
 ## ⚠️ Known Pitfalls & Safety
 
 - **Project ID Validation**: 実行前に必ず `.env` から `GOOGLE_CLOUD_PROJECT` が正しく読み込まれているかチェックしてください。

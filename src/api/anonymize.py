@@ -1,17 +1,33 @@
-from typing import Annotated
+import asyncio
+from collections.abc import Callable, Coroutine
+from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Security, status
 
 from src.api.auth import verify_api_key
 from src.core.ai import GeminiCore
+from src.core.anonymize_methods import (
+    anonymize_with_gemini,
+    anonymize_with_ollama,
+    anonymize_with_regex,
+)
 from src.core.anonymize_schema import (
     AnonymizeGeminiResult,
     AnonymizeRequest,
     AnonymizeResponse,
+    CompareResponse,
 )
 
 router = APIRouter(prefix="/anonymize", tags=["anonymize"])
 _ai_core = GeminiCore()
+
+# 比較対象の手法リスト。新しい手法を追加する場合はここに追記する。
+_AnonymizeMethod = Callable[..., Coroutine[Any, Any, Any]]
+_METHODS: list[_AnonymizeMethod] = [
+    anonymize_with_regex,
+    anonymize_with_gemini,
+    anonymize_with_ollama,
+]
 
 _ANONYMIZE_PROMPT = """\
 【テキスト匿名化タスク】
@@ -78,3 +94,18 @@ async def anonymize_text(
         anonymized_text=result.anonymized_text,
         entities=result.entities,
     )
+
+
+@router.post("/compare", response_model=CompareResponse, status_code=status.HTTP_200_OK)
+async def compare_anonymize(
+    request: AnonymizeRequest,
+    api_key: Annotated[str, Security(verify_api_key)],
+) -> CompareResponse:
+    """
+    複数の匿名化手法を並列実行し、結果を比較できる形式で返す。
+    手法の追加は _METHODS リストへの追記のみで対応できる。
+    """
+    results = await asyncio.gather(
+        *[method(text=request.text, ai_core=_ai_core) for method in _METHODS]
+    )
+    return CompareResponse(original_text=request.text, results=list(results))

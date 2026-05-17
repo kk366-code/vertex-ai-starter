@@ -44,13 +44,22 @@
           class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 resize-none mb-4"
         ></textarea>
 
-        <button
-          onclick="runAnonymize()"
-          id="run-btn"
-          class="w-full bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
-        >
-          匿名化を実行
-        </button>
+        <div class="flex gap-3">
+          <button
+            onclick="runAnonymize()"
+            id="run-btn"
+            class="flex-1 bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+          >
+            匿名化を実行
+          </button>
+          <button
+            onclick="runCompare()"
+            id="compare-btn"
+            class="flex-1 bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+          >
+            手法を比較する
+          </button>
+        </div>
 
         <!-- Progress -->
         <div id="progress" class="hidden mt-3 flex items-center gap-2 text-sm text-emerald-600">
@@ -58,22 +67,20 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
           </svg>
-          <span>AIが個人情報を検出・置換中...</span>
+          <span id="progress-label">AIが個人情報を検出・置換中...</span>
         </div>
       </div>
 
       <!-- エラー -->
       <div id="error-box" class="hidden bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-sm text-red-700"></div>
 
-      <!-- 結果 -->
+      <!-- 単体実行 結果 -->
       <div id="result-section" class="hidden space-y-6">
-        <!-- 匿名化済みテキスト -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <div class="flex items-center justify-between mb-3">
             <h2 class="font-semibold text-slate-800">匿名化済みテキスト</h2>
             <button
               onclick="copyAnonymized()"
-              id="copy-btn"
               class="text-xs text-emerald-600 border border-emerald-300 px-3 py-1 rounded-lg hover:bg-emerald-50 transition-colors"
             >
               コピー
@@ -85,8 +92,7 @@
           ></div>
         </div>
 
-        <!-- 検出エンティティ -->
-        <div id="entities-section" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <h2 class="font-semibold text-slate-800 mb-3">検出された個人・機密情報</h2>
           <div id="entities-empty" class="hidden text-sm text-slate-400">個人情報は検出されませんでした。</div>
           <div id="entities-table-wrap" class="overflow-x-auto">
@@ -102,6 +108,12 @@
             </table>
           </div>
         </div>
+      </div>
+
+      <!-- 比較結果 -->
+      <div id="compare-section" class="hidden space-y-4">
+        <h2 class="font-semibold text-slate-700 text-lg">手法別 比較結果</h2>
+        <div id="compare-cards"></div>
       </div>
     </div>
 
@@ -145,23 +157,23 @@
         setTimeout(() => el.remove(), 3000);
       }
 
+      function setLoading(isLoading, label = "AIが個人情報を検出・置換中...") {
+        document.getElementById("run-btn").disabled = isLoading;
+        document.getElementById("compare-btn").disabled = isLoading;
+        document.getElementById("progress-label").textContent = label;
+        document.getElementById("progress").classList.toggle("hidden", !isLoading);
+        document.getElementById("error-box").classList.add("hidden");
+      }
+
       async function runAnonymize() {
         const text = document.getElementById("input-text").value.trim();
         const apiKey = getApiKey();
+        if (!text) return showToast("テキストを入力してください", true);
+        if (!apiKey) return showToast("API Key を入力・保存してください", true);
 
-        if (!text) {
-          showToast("テキストを入力してください", true);
-          return;
-        }
-        if (!apiKey) {
-          showToast("API Key を入力・保存してください", true);
-          return;
-        }
-
-        document.getElementById("run-btn").disabled = true;
-        document.getElementById("progress").classList.remove("hidden");
-        document.getElementById("error-box").classList.add("hidden");
+        setLoading(true);
         document.getElementById("result-section").classList.add("hidden");
+        document.getElementById("compare-section").classList.add("hidden");
 
         try {
           const res = await fetch("/anonymize/text", {
@@ -169,30 +181,54 @@
             headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
             body: JSON.stringify({ text }),
           });
-
           if (!res.ok) {
             const err = await res.json().catch(() => ({}));
             throw new Error(err.detail || `HTTP ${res.status}`);
           }
-
-          const data = await res.json();
-          renderResult(data);
+          renderResult(await res.json());
         } catch (e) {
           const box = document.getElementById("error-box");
           box.textContent = `エラー: ${e.message}`;
           box.classList.remove("hidden");
         } finally {
-          document.getElementById("run-btn").disabled = false;
-          document.getElementById("progress").classList.add("hidden");
+          setLoading(false);
+        }
+      }
+
+      async function runCompare() {
+        const text = document.getElementById("input-text").value.trim();
+        const apiKey = getApiKey();
+        if (!text) return showToast("テキストを入力してください", true);
+        if (!apiKey) return showToast("API Key を入力・保存してください", true);
+
+        setLoading(true, "複数の手法で並列処理中...");
+        document.getElementById("result-section").classList.add("hidden");
+        document.getElementById("compare-section").classList.add("hidden");
+
+        try {
+          const res = await fetch("/anonymize/compare", {
+            method: "POST",
+            headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },
+            body: JSON.stringify({ text }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+          }
+          renderCompare(await res.json());
+        } catch (e) {
+          const box = document.getElementById("error-box");
+          box.textContent = `エラー: ${e.message}`;
+          box.classList.remove("hidden");
+        } finally {
+          setLoading(false);
         }
       }
 
       function renderResult(data) {
         document.getElementById("anonymized-text").textContent = data.anonymized_text;
-
         const body = document.getElementById("entities-body");
         body.innerHTML = "";
-
         if (!data.entities || data.entities.length === 0) {
           document.getElementById("entities-empty").classList.remove("hidden");
           document.getElementById("entities-table-wrap").classList.add("hidden");
@@ -200,21 +236,72 @@
           document.getElementById("entities-empty").classList.add("hidden");
           document.getElementById("entities-table-wrap").classList.remove("hidden");
           for (const entity of data.entities) {
-            const badgeClass = CATEGORY_BADGE[entity.category] || CATEGORY_BADGE.other;
-            const label = CATEGORY_LABEL[entity.category] || entity.category;
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-              <td class="py-2 pr-4 text-slate-700">${escapeHtml(entity.original)}</td>
-              <td class="py-2 pr-4">
-                <span class="inline-block text-xs font-medium px-2 py-0.5 rounded-full ${badgeClass}">${label}</span>
-              </td>
-              <td class="py-2 text-slate-500">${escapeHtml(entity.replacement)}</td>
-            `;
-            body.appendChild(tr);
+            body.appendChild(buildEntityRow(entity));
           }
         }
-
         document.getElementById("result-section").classList.remove("hidden");
+      }
+
+      function renderCompare(data) {
+        const container = document.getElementById("compare-cards");
+        container.innerHTML = "";
+        for (const result of data.results) {
+          const card = document.createElement("div");
+          card.className = "bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4";
+
+          const header = `
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <h3 class="font-semibold text-slate-800">${escapeHtml(result.label)}</h3>
+                <span class="text-xs text-slate-400">${result.duration_ms} ms</span>
+              </div>
+            </div>`;
+
+          if (result.error) {
+            card.innerHTML = header + `
+              <div class="bg-red-50 border border-red-100 rounded-lg px-4 py-3 text-sm text-red-600">
+                ${escapeHtml(result.error)}
+              </div>`;
+          } else {
+            const entityRows = (result.entities || []).map(buildEntityRow);
+            const entityHtml = entityRows.length === 0
+              ? `<p class="text-xs text-slate-400">検出なし</p>`
+              : `<table class="w-full text-xs mt-3">
+                  <thead><tr class="border-b border-slate-100">
+                    <th class="text-left font-medium text-slate-400 pb-1 pr-3">元の文字列</th>
+                    <th class="text-left font-medium text-slate-400 pb-1 pr-3">カテゴリ</th>
+                    <th class="text-left font-medium text-slate-400 pb-1">置換後</th>
+                  </tr></thead>
+                  <tbody class="divide-y divide-slate-50">${entityRows.map((r) => r.outerHTML).join("")}</tbody>
+                </table>`;
+
+            card.innerHTML = header + `
+              <div class="bg-slate-50 rounded-lg px-4 py-3 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed mb-3">
+                ${escapeHtml(result.anonymized_text)}
+              </div>
+              <details class="text-sm">
+                <summary class="cursor-pointer text-slate-500 hover:text-slate-700 select-none">
+                  検出エンティティ（${result.entities.length}件）
+                </summary>
+                ${entityHtml}
+              </details>`;
+          }
+          container.appendChild(card);
+        }
+        document.getElementById("compare-section").classList.remove("hidden");
+      }
+
+      function buildEntityRow(entity) {
+        const badgeClass = CATEGORY_BADGE[entity.category] || CATEGORY_BADGE.other;
+        const label = CATEGORY_LABEL[entity.category] || entity.category;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="py-1.5 pr-4 text-slate-700">${escapeHtml(entity.original)}</td>
+          <td class="py-1.5 pr-4">
+            <span class="inline-block text-xs font-medium px-2 py-0.5 rounded-full ${badgeClass}">${label}</span>
+          </td>
+          <td class="py-1.5 text-slate-500">${escapeHtml(entity.replacement)}</td>`;
+        return tr;
       }
 
       async function copyAnonymized() {
@@ -224,7 +311,7 @@
       }
 
       function escapeHtml(str) {
-        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       }
 
       window.addEventListener("load", () => {
