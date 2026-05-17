@@ -215,6 +215,11 @@ async def search_ui(request: Request):
     return templates.TemplateResponse("search.html", {"request": request})
 
 
+@app.get("/anonymize", response_class=HTMLResponse)
+async def anonymize_ui(request: Request):
+    return templates.TemplateResponse("anonymize.html", {"request": request})
+
+
 @app.post("/upload", response_class=HTMLResponse)
 async def handle_upload(
     request: Request,
