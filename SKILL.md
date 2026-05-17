@@ -1,5 +1,26 @@
 # SKILL.md - Implementation Patterns
 
+## 🗂 Router Implementation Pattern
+
+新しいAPIを追加する手順:
+
+1. `src/core/<feature>_schema.py` — Pydanticスキーマを定義する
+   - `<Feature>GeminiResult` — Geminiの構造化出力用（`response_schema` に渡す）
+   - `<Feature>Response` — APIレスポンス用（`original_text` など追加情報をルーターで組み立て）
+2. `src/api/<feature>.py` — `APIRouter(prefix="/<feature>", tags=["<feature>"])` をモジュール内で宣言
+   - モジュールレベルで `_ai_core = GeminiCore()` を宣言（リクエストごとに生成しない）
+   - 既存の `src/api/pdf.py` や `src/api/anonymize.py` をベースに作成
+3. `src/api/main.py` — import して `app.include_router()` に追加
+4. `API_MAP.md` — 新しいエンドポイントを一覧に追記する
+
+使用するGeminiメソッドの選択:
+
+| メソッド | 用途 |
+|---------|------|
+| `analyze_text(prompt, response_schema)` | 構造化JSON出力が必要な場合（temperature=0.1） |
+| `analyze_text_simple(prompt)` | 自由形式テキストでよい場合 |
+| `analyze_image(prompt, gcs_uri, response_schema)` | 画像・PDF等のファイル解析 |
+
 ## 🐍 Modern Python Best Practices (2026)
 
 AIがコードを生成・修正する際は、以下の2026年3月時点の最新プラクティスを遵守してください。

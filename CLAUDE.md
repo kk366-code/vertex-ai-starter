@@ -4,45 +4,38 @@
 
 - **Name**: uv-test-20260226
 - **Stack**: Python 3.14+, uv, FastAPI, Google Cloud Vertex AI (Gemini 2.5 Flash)
-- **Core Goal**: Google Cloud Vertex AIを活用した、構造化データ（JSON）によるマルチモーダル（画像・動画・音声・PDF・テキスト）メディアの高度な解析基盤。
+- **Core Goal**: Vertex AIを活用したマルチモーダルメディア解析基盤。
+
+## 📚 詳細ドキュメント
+
+| ファイル | 内容 | 参照タイミング |
+|---------|------|--------------|
+| **SKILL.md** | 実装パターン・Gemini呼び出し・Known Pitfalls | API追加・修正時 |
+| **FRONTEND.md** | テンプレート・htmx・Tailwind規約 | UI追加時 |
+| **API_MAP.md** | 実装済みエンドポイント一覧 | 新API追加前 |
 
 ## 🛠 Development Commands
 
 - **Environment Setup**: `uv sync` (依存関係の同期), `uv python install` (ランタイムのインストール)
-- **App Execution (Main)**: `uv run main.py`
 - **API Execution (FastAPI)**: `uv run uvicorn src.api.main:app --reload`
 - **Testing**: `uv run pytest`
 - **Linting & Formatting**: `uv run ruff format . && uv run ruff check . --fix`
 - **Type Checking**: `uv run mypy .`
 
-## 📏 Coding Standards (2026 Edition)
+## 📏 Coding Standards
 
-※詳細は SKILL.md の実装パターンを参照してください。
-
-- **Type System**: Python 3.10+ の `|` (Pipe syntax) を使用し、`str | None` のように記述します（`Optional` は非推奨）。
-- **Async Pattern**: Gemini API呼び出しには `client.aio` (Async API) を使用し、一貫して非同期処理を徹底します。
-- **Schema Validation**: AIのレスポンス定義には必ず Pydantic `BaseModel` を使用します。
-- **Naming**: 変数・関数名は `snake_case`、クラス名は `PascalCase`、定数は `UPPER_SNAKE_CASE` を遵守します。
-- **External API Response Nullability**: Google SDK（google-genai, google-cloud-firestore等）のレスポンスフィールドは `| None` を含む型定義が多い。フィールドへのアクセス前に必ず None チェックを行い、mypy エラーを防ぐこと（詳細は SKILL.md の「Known Pitfalls」を参照）。
+- **Types**: `str | None` 形式（`Optional` 禁止）
+- **Async**: Gemini呼び出しは `client.aio` で非同期統一
+- **Schema**: AIレスポンスには必ず Pydantic `BaseModel`
+- **Naming**: `snake_case` / `PascalCase` / `UPPER_SNAKE_CASE`
+- 詳細・Known Pitfalls は **SKILL.md** を参照
 
 ## 📂 Project Structure
 
-- `src/api/`: FastAPIのエンドポイント定義。
-- `src/core/`: Geminiクライアント、ストレージ操作、データスキーマ等の基幹ロジック。
-- `tests/`: `pytest-mock` を使用した単体テストおよび結合テスト。
-- `upload/`: 処理対象メディアの一時保存用ディレクトリ（`.gitignore` 対象）。
-
-## 📜 FastAPI Implementation Conventions
-
-- **Dependency Injection**: `Form`, `File`, `Security`, `Depends` を使用する際は、必ず `typing.Annotated` を使用する（Ruff B008 回避と型安全のため）。
-- **File Upload & Temporary Storage**:
-  - クライアントからのファイルは一度 `upload/` 内の「一時フォルダ」に保存する。
-  - `tempfile.TemporaryDirectory(dir=Path("upload"))` を使用し、作業完了後（またはエラー時）に自動削除されるように設計する。
-  - 元ファイルを破壊・削除しないよう、パスの分離を徹底する。
-
-## 🎨 HTML Formatting (Prettier)
-
-HTMLファイルは `.prettierrc` に基づき整形すること。
+- `src/api/` — FastAPIルーター（新規追加パターンは **SKILL.md** 参照）
+- `src/core/` — Geminiクライアント・スキーマ・ストレージ等
+- `src/api/templates/` — Jinja2テンプレート（UI規約は **FRONTEND.md** 参照）
+- `tests/` — pytest-mock を使った単体・結合テスト
 
 ## 📝 Git & PR Convention
 
