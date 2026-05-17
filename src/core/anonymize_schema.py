@@ -40,3 +40,17 @@ class AnonymizeResponse(BaseModel):
     entities: list[DetectedEntity] = Field(
         description="検出された個人・機密情報と置換文字列のマッピングリスト"
     )
+
+
+class MethodResult(BaseModel):
+    method: str = Field(description="手法名（regex / gemini / ollama など）")
+    label: str = Field(description="表示用ラベル")
+    anonymized_text: str = Field(description="匿名化済みテキスト")
+    entities: list[DetectedEntity] = Field(description="検出エンティティ一覧")
+    duration_ms: int = Field(description="処理時間（ミリ秒）")
+    error: str | None = Field(default=None, description="エラーメッセージ（失敗時のみ）")
+
+
+class CompareResponse(BaseModel):
+    original_text: str = Field(description="入力された元のテキスト")
+    results: list[MethodResult] = Field(description="各手法の結果一覧")
