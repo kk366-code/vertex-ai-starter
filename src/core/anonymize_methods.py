@@ -7,11 +7,60 @@
 
 import re
 import time
+from functools import lru_cache
+from string import ascii_uppercase
 
 import httpx
 
 from src.core.ai import GeminiCore
 from src.core.anonymize_schema import AnonymizeGeminiResult, DetectedEntity, MethodResult
+
+# GiNZA ラベル → 匿名化カテゴリのマッピング
+_GINZA_LABEL_MAP: dict[str, str] = {
+    "Person": "person",
+    "N_Person": "person",
+    "Company": "company",
+    "Company_Group": "company",
+    "Corporation_Other": "company",
+    "N_Organization": "company",
+    "Organization_Other": "company",
+    "International_Organization": "company",
+    "Political_Organization_Other": "company",
+    "Province": "address",
+    "City": "address",
+    "Country": "address",
+    "Postal_Address": "address",
+    "Domestic_Region": "address",
+    "GPE_Other": "address",
+    "Location_Other": "address",
+    "Email": "email",
+    "Phone_Number": "phone",
+    "ID_Number": "other",
+    "URL": "other",
+}
+
+
+# カテゴリ別の置換文字列生成ルール
+def _make_replacement(category: str, label: str) -> str:
+    if category == "person":
+        return f"{label}さん"
+    if category == "company":
+        return f"{label}社"
+    if category == "email":
+        return f"{label.lower()}@example.com"
+    if category == "phone":
+        return "000-0000-0000"
+    if category == "address":
+        return f"[住所{label}]"
+    return f"[機密情報{label}]"
+
+
+@lru_cache(maxsize=1)
+def _load_ginza():
+    import spacy
+
+    return spacy.load("ja_ginza", exclude=["compound_splitter", "bunsetu_recognizer"])
+
 
 _ANONYMIZE_PROMPT = """\
 【テキスト匿名化タスク】
@@ -129,6 +178,54 @@ async def anonymize_with_gemini(text: str, ai_core: GeminiCore, **_) -> MethodRe
         return MethodResult(
             method="gemini",
             label="Gemini 2.5 Flash",
+            anonymized_text=text,
+            entities=[],
+            duration_ms=int((time.monotonic() - start) * 1000),
+            error=str(e),
+        )
+
+
+async def anonymize_with_ginza(text: str, **_) -> MethodResult:
+    start = time.monotonic()
+    try:
+        nlp = _load_ginza()
+        doc = nlp(text)
+
+        # カテゴリ別に A, B, C … のラベルを独立採番
+        category_counters: dict[str, int] = {}
+        seen: dict[str, str] = {}
+        entities: list[DetectedEntity] = []
+
+        result = text
+        # 後ろから置換して位置ずれを防ぐ
+        for ent in sorted(doc.ents, key=lambda e: e.start_char, reverse=True):
+            category = _GINZA_LABEL_MAP.get(ent.label_)
+            if category is None:
+                continue
+            original = ent.text
+            if original not in seen:
+                idx = category_counters.get(category, 0)
+                label = ascii_uppercase[idx] if idx < 26 else f"A{idx}"
+                category_counters[category] = idx + 1
+                replacement = _make_replacement(category, label)
+                seen[original] = replacement
+                entities.append(
+                    DetectedEntity(original=original, category=category, replacement=replacement)
+                )
+            result = result[: ent.start_char] + seen[original] + result[ent.end_char :]
+
+        entities.sort(key=lambda e: text.index(e.original))
+        return MethodResult(
+            method="ginza",
+            label="GiNZA (NER)",
+            anonymized_text=result,
+            entities=entities,
+            duration_ms=int((time.monotonic() - start) * 1000),
+        )
+    except Exception as e:
+        return MethodResult(
+            method="ginza",
+            label="GiNZA (NER)",
             anonymized_text=text,
             entities=[],
             duration_ms=int((time.monotonic() - start) * 1000),
