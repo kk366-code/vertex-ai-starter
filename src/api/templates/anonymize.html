@@ -163,7 +163,9 @@
         document.getElementById("compare-btn").disabled = isLoading;
         document.getElementById("progress-label").textContent = label;
         document.getElementById("progress").classList.toggle("hidden", !isLoading);
-        document.getElementById("error-box").classList.add("hidden");
+        if (isLoading) {
+          document.getElementById("error-box").classList.add("hidden");
+        }
       }
 
       async function runAnonymize() {
@@ -296,12 +298,25 @@
         const badgeClass = CATEGORY_BADGE[entity.category] || CATEGORY_BADGE.other;
         const label = CATEGORY_LABEL[entity.category] || entity.category;
         const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="py-1.5 pr-4 text-slate-700">${escapeHtml(entity.original)}</td>
-          <td class="py-1.5 pr-4">
-            <span class="inline-block text-xs font-medium px-2 py-0.5 rounded-full ${badgeClass}">${label}</span>
-          </td>
-          <td class="py-1.5 text-slate-500">${escapeHtml(entity.replacement)}</td>`;
+
+        const td1 = document.createElement("td");
+        td1.className = "py-1.5 pr-4 text-slate-700";
+        td1.textContent = entity.original;
+
+        const td2 = document.createElement("td");
+        td2.className = "py-1.5 pr-4";
+        const badge = document.createElement("span");
+        badge.className = `inline-block text-xs font-medium px-2 py-0.5 rounded-full ${badgeClass}`;
+        badge.textContent = label;
+        td2.appendChild(badge);
+
+        const td3 = document.createElement("td");
+        td3.className = "py-1.5 text-slate-500";
+        td3.textContent = entity.replacement;
+
+        tr.appendChild(td1);
+        tr.appendChild(td2);
+        tr.appendChild(td3);
         return tr;
       }
 
