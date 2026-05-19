@@ -88,7 +88,8 @@
           </div>
           <div
             id="anonymized-text"
-            class="bg-slate-50 rounded-lg px-4 py-3 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed"
+            class="bg-slate-50 rounded-lg px-4 py-3 text-sm text-slate-700 leading-relaxed"
+            style="white-space: pre-wrap;"
           ></div>
         </div>
 
@@ -276,7 +277,7 @@
                 </table>`;
 
             card.innerHTML = header + `
-              <div class="bg-slate-50 rounded-lg px-4 py-3 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed mb-3">
+              <div class="bg-slate-50 rounded-lg px-4 py-3 text-sm text-slate-700 leading-relaxed mb-3" style="white-space: pre-wrap;">
                 ${escapeHtml(result.anonymized_text)}
               </div>
               <details class="text-sm">
