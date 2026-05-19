@@ -4,6 +4,7 @@ from google.cloud.firestore_v1.vector import Vector
 
 from src.core.config import settings
 from src.core.knowledge_schema import KnowledgeDocument, KnowledgeDocumentSummary, SearchLog
+from src.core.ocr_schema import OcrResult
 from src.core.pdf_schema import PdfTextResult
 from src.core.resume_schema import (
     CompanyProfile,
@@ -20,6 +21,7 @@ _COLLECTION_RESUME_JOBS = "resume_job_analyses"
 _COLLECTION_PERSONAL_PROFILE = "personal_profiles"
 _COLLECTION_COMPANY_PROFILES = "company_profiles"
 _COLLECTION_PDF_TEXTS = "pdf_texts"
+_COLLECTION_OCR_RESULTS = "ocr_results"
 _COLLECTION_KNOWLEDGE_DOCS = "knowledge_documents"
 _COLLECTION_SEARCH_LOGS = "search_logs"
 _PROFILE_DOC_ID = "current"
@@ -146,6 +148,18 @@ class FirestoreManager:
         if not snapshot.exists:
             return None
         return PdfTextResult.model_validate(snapshot.to_dict())
+
+    async def save_ocr_result(self, result: OcrResult) -> str:
+        doc_ref = self.client.collection(_COLLECTION_OCR_RESULTS).document(result.id)
+        await doc_ref.set(result.model_dump())
+        return result.id
+
+    async def get_ocr_result(self, doc_id: str) -> OcrResult | None:
+        doc_ref = self.client.collection(_COLLECTION_OCR_RESULTS).document(doc_id)
+        snapshot = await doc_ref.get()
+        if not snapshot.exists:
+            return None
+        return OcrResult.model_validate(snapshot.to_dict())
 
     async def save_knowledge_document(self, doc: KnowledgeDocument) -> str:
         data = doc.model_dump()

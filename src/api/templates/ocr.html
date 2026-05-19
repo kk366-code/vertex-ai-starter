@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>画像OCR テキスト抽出</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+
+  <body class="bg-slate-50 min-h-screen">
+    <div class="max-w-4xl mx-auto px-4 py-8">
+      <h1 class="text-2xl font-bold text-center text-slate-800 mb-1">🖼 画像OCR テキスト抽出</h1>
+      <p class="text-center text-slate-500 text-sm mb-8">
+        Gemini 2.5 Flash で複数画像からテキストを抽出し、ページ番号付きで結合します。
+      </p>
+
+      <!-- API Key -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">API Key</label>
+        <div class="flex gap-2">
+          <input
+            id="api-key-input"
+            type="password"
+            placeholder="INTERNAL_API_KEY を入力"
+            class="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          />
+          <button
+            onclick="saveApiKey()"
+            class="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
+          >
+            保存
+          </button>
+        </div>
+        <p id="api-key-status" class="text-xs text-slate-400 mt-1"></p>
+      </div>
+
+      <!-- アップロードフォーム -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+        <h2 class="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+          <span class="bg-emerald-600 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">1</span>
+          画像をアップロード
+        </h2>
+
+        <label class="block text-sm text-slate-600 mb-2">PNG / JPEG ファイル（複数選択可）</label>
+        <input
+          id="file-input"
+          type="file"
+          accept="image/png,image/jpeg"
+          multiple
+          class="block w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 mb-4"
+        />
+        <p id="file-count" class="text-xs text-slate-400 mb-4">未選択</p>
+
+        <h3 class="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+          <span class="bg-blue-600 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">2</span>
+          クロップ設定（任意・ピクセル単位）
+        </h3>
+        <p class="text-xs text-slate-400 mb-3">
+          画面端のUI要素や余白を削りたい場合に指定します。すべて 0 のままならクロップしません。
+        </p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <label class="block">
+            <span class="block text-xs text-slate-500 mb-1">上 (top)</span>
+            <input id="crop-top" type="number" min="0" value="200"
+              class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+          </label>
+          <label class="block">
+            <span class="block text-xs text-slate-500 mb-1">下 (bottom)</span>
+            <input id="crop-bottom" type="number" min="0" value="100"
+              class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+          </label>
+          <label class="block">
+            <span class="block text-xs text-slate-500 mb-1">左 (left)</span>
+            <input id="crop-left" type="number" min="0" value="80"
+              class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+          </label>
+          <label class="block">
+            <span class="block text-xs text-slate-500 mb-1">右 (right)</span>
+            <input id="crop-right" type="number" min="0" value="80"
+              class="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+          </label>
+        </div>
+
+        <button
+          onclick="runOcr()"
+          id="run-btn"
+          class="w-full bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+        >
+          OCR 実行
+        </button>
+        <div id="progress" class="hidden mt-3 text-sm text-emerald-600">⏳ OCR処理中... 画像枚数が多いと時間がかかります。</div>
+        <div id="error-box" class="hidden mt-3 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600"></div>
+      </div>
+
+      <!-- 結果表示 -->
+      <div id="result-section" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-semibold text-slate-800">抽出結果</h2>
+          <div class="flex gap-2">
+            <button id="copy-btn" onclick="copyCombined()"
+              class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+              📋 結合テキストをコピー
+            </button>
+            <button id="download-btn" onclick="downloadCombined()"
+              class="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+              💾 book_text.txt をダウンロード
+            </button>
+          </div>
+        </div>
+        <p id="result-meta" class="text-xs text-slate-400 mb-3"></p>
+
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">結合テキスト</h3>
+        <div
+          id="combined-text"
+          class="text-sm text-slate-700 leading-relaxed bg-slate-50 border border-slate-100 rounded-lg p-3 mb-6 max-h-96 overflow-auto"
+          style="white-space: pre-wrap;"
+        ></div>
+
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">ページ別</h3>
+        <div id="pages-list" class="space-y-3"></div>
+      </div>
+    </div>
+
+    <script>
+      let lastCombinedText = '';
+      let lastResultId = '';
+
+      window.addEventListener('DOMContentLoaded', () => {
+        const saved = localStorage.getItem('agent_api_key');
+        if (saved) {
+          document.getElementById('api-key-input').value = saved;
+          document.getElementById('api-key-status').textContent = '✓ 保存済み';
+        }
+        document.getElementById('file-input').addEventListener('change', updateFileCount);
+      });
+
+      function saveApiKey() {
+        const key = document.getElementById('api-key-input').value.trim();
+        if (!key) return;
+        localStorage.setItem('agent_api_key', key);
+        document.getElementById('api-key-status').textContent = '✓ 保存しました';
+      }
+
+      function getApiKey() {
+        return localStorage.getItem('agent_api_key') || document.getElementById('api-key-input').value.trim();
+      }
+
+      function updateFileCount() {
+        const input = document.getElementById('file-input');
+        const count = input.files ? input.files.length : 0;
+        document.getElementById('file-count').textContent = count > 0 ? `選択中: ${count} 枚` : '未選択';
+      }
+
+      function setLoading(isLoading) {
+        const btn = document.getElementById('run-btn');
+        const progress = document.getElementById('progress');
+        btn.disabled = isLoading;
+        progress.classList.toggle('hidden', !isLoading);
+        if (isLoading) {
+          document.getElementById('error-box').classList.add('hidden');
+        }
+      }
+
+      function showError(message) {
+        const box = document.getElementById('error-box');
+        box.textContent = `❌ ${message}`;
+        box.classList.remove('hidden');
+      }
+
+      async function runOcr() {
+        const key = getApiKey();
+        if (!key) {
+          showError('API Key を入力してください。');
+          return;
+        }
+
+        const input = document.getElementById('file-input');
+        if (!input.files || input.files.length === 0) {
+          showError('画像ファイルを1枚以上選択してください。');
+          return;
+        }
+
+        const formData = new FormData();
+        const single = input.files.length === 1;
+        const endpoint = single ? '/ocr/extract' : '/ocr/extract-batch';
+        const fieldName = single ? 'file' : 'files';
+        for (const file of input.files) {
+          formData.append(fieldName, file);
+        }
+        formData.append('crop_top', document.getElementById('crop-top').value || '0');
+        formData.append('crop_bottom', document.getElementById('crop-bottom').value || '0');
+        formData.append('crop_left', document.getElementById('crop-left').value || '0');
+        formData.append('crop_right', document.getElementById('crop-right').value || '0');
+
+        setLoading(true);
+        document.getElementById('result-section').classList.add('hidden');
+
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'X-API-KEY': key },
+            body: formData,
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.detail || 'OCRに失敗しました。');
+          }
+          renderResult(data);
+        } catch (e) {
+          showError(e.message);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      function renderResult(data) {
+        lastCombinedText = data.combined_text || '';
+        lastResultId = data.id || '';
+
+        document.getElementById('result-meta').textContent =
+          `ID: ${data.id} / ${data.pages.length}ページ / ${new Date(data.created_at).toLocaleString('ja-JP')}`;
+
+        document.getElementById('combined-text').textContent = lastCombinedText;
+
+        const list = document.getElementById('pages-list');
+        list.replaceChildren();
+        for (const page of data.pages) {
+          const card = document.createElement('div');
+          card.className = 'p-3 rounded-lg bg-slate-50 border border-slate-100';
+
+          const header = document.createElement('div');
+          header.className = 'flex items-center justify-between mb-2';
+
+          const title = document.createElement('p');
+          title.className = 'text-xs font-medium text-slate-600';
+          title.textContent = `PAGE ${page.page_number}: ${page.filename}`;
+          header.appendChild(title);
+
+          const uri = document.createElement('p');
+          uri.className = 'text-xs text-slate-400 truncate ml-2';
+          uri.textContent = page.source_gcs_uri;
+          header.appendChild(uri);
+
+          card.appendChild(header);
+
+          const body = document.createElement('div');
+          body.className = 'text-sm text-slate-700 leading-relaxed';
+          body.setAttribute('style', 'white-space: pre-wrap;');
+          body.textContent = page.text;
+          card.appendChild(body);
+
+          list.appendChild(card);
+        }
+
+        document.getElementById('result-section').classList.remove('hidden');
+      }
+
+      function copyCombined() {
+        if (!lastCombinedText) return;
+        navigator.clipboard.writeText(lastCombinedText).then(() => {
+          const btn = document.getElementById('copy-btn');
+          const original = btn.textContent;
+          btn.textContent = '✓ コピーしました';
+          setTimeout(() => { btn.textContent = original; }, 1500);
+        });
+      }
+
+      function downloadCombined() {
+        if (!lastCombinedText) return;
+        const blob = new Blob([lastCombinedText], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `book_text_${lastResultId || 'ocr'}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    </script>
+  </body>
+</html>

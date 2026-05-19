@@ -25,6 +25,7 @@ from src.api.anonymize import router as anonymize_router
 from src.api.auth import verify_api_key
 from src.api.jobs import router as jobs_router
 from src.api.knowledge import router as knowledge_router
+from src.api.ocr import router as ocr_router
 from src.api.pdf import router as pdf_router
 from src.api.resume import router as resume_router
 from src.api.search import router as search_router
@@ -50,6 +51,7 @@ app.include_router(resume_router)
 app.include_router(pdf_router, prefix="/pdf", tags=["pdf"])
 app.include_router(knowledge_router)
 app.include_router(search_router)
+app.include_router(ocr_router)
 
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -218,6 +220,11 @@ async def search_ui(request: Request):
 @app.get("/anonymize", response_class=HTMLResponse)
 async def anonymize_ui(request: Request):
     return templates.TemplateResponse("anonymize.html", {"request": request})
+
+
+@app.get("/ocr", response_class=HTMLResponse)
+async def ocr_ui(request: Request):
+    return templates.TemplateResponse("ocr.html", {"request": request})
 
 
 @app.post("/upload", response_class=HTMLResponse)

@@ -34,4 +34,7 @@
 | DELETE | /knowledge/documents/{doc_id} | ドキュメント削除 | `src/api/knowledge.py` |
 | POST | /search/query | セマンティック検索＋RAG回答 | `src/api/search.py` |
 | POST | /search/feedback/{log_id} | 検索フィードバック登録 | `src/api/search.py` |
+| POST | /ocr/extract | 単一画像のOCRテキスト抽出 | `src/api/ocr.py` |
+| POST | /ocr/extract-batch | 複数画像のOCRテキスト抽出（ページ結合） | `src/api/ocr.py` |
+| GET  | /ocr/extract/{result_id} | OCR結果取得 | `src/api/ocr.py` |
 | GET  | /health | ヘルスチェック | `src/api/main.py` |
